@@ -1,6 +1,6 @@
 # ChartForge RSI
 
-ChartForge RSI 3.6.3 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
+ChartForge RSI 3.7.0 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
 
 ## Công thức
 
@@ -94,6 +94,11 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - Price scale được nới rộng và toàn bộ phép pan/zoom/hit-test dùng cùng plot width mới, tránh cắt mất chữ số của giá.
 - Nhấp đúp Text đã lưu để mở lại editor; Enter hoặc click ra ngoài lưu nội dung mới, Esc hủy. Chỉnh text tham gia Undo/Redo.
 - Nhãn giá hover đo đúng chiều rộng logic của canvas theo device-pixel-ratio và tự co font khi chuỗi giá dài, không còn tràn/cắt ở mép phải.
+- Price scale có lớp bắt sự kiện riêng nằm trên canvas, nên kéo để zoom giá không thể chọn hoặc di chuyển drawing bên dưới.
+- Các timeframe được chuyển lên topbar riêng để chừa bottom toolbar cho nhóm điều khiển chart và mở rộng công cụ sau này.
+- Thêm timeframe `30m`. Khi kéo các timeframe nhỏ tới đầu lịch sử đang có, extension tự tải tiếp từng lô tối đa 1.000 nến cũ và giữ nguyên vùng đang xem.
+- Icon drawing ở rail trái được tăng kích thước và vẽ lại theo ngôn ngữ icon nét mảnh của TradingView.
+- Mọi button trong bottom toolbar đều có trạng thái hover đồng nhất.
 
 Nút `▾/RSI ▴` thu gọn thành badge vàng nổi và khôi phục panel mà vẫn giữ vị trí, kích thước, timeframe và zoom.
 
@@ -101,6 +106,6 @@ Nút `▾/RSI ▴` thu gọn thành badge vàng nổi và khôi phục panel mà
 
 - Extension chỉ đọc dữ liệu thị trường công khai từ Binance; không yêu cầu API key và không truy cập lệnh/tài khoản.
 - Đây là overlay độc lập, không phải Pine Script chạy native trong TradingView widget của Binance.
-- Các khung: H1, H2, H4, H8, H12, D, 3D, 1W, 2W, M. Chỉ khung được chọn mới tải và hiển thị.
+- Các khung: 30m, H1, H2, H4, H8, H12, D, 3D, 1W, 2W, M. Chỉ khung được chọn mới tải và hiển thị.
 - `2W` được tổng hợp từ nến `1W`, vì Spot API không phát interval `2W` trực tiếp.
-- Extension tải tối đa 1.000 nến cho thao tác kéo về quá khứ.
+- Extension tải ban đầu 1.000 nến và tự nạp thêm từng lô khi kéo đến đầu lịch sử ở các khung nhỏ.

@@ -4,19 +4,19 @@
   window.__binanceRsiMtfLoaded = true;
 
   const TFS = [
-    ["H1", "1h"], ["H2", "2h"], ["H4", "4h"], ["H8", "8h"], ["H12", "12h"],
+    ["30m", "30m"], ["H1", "1h"], ["H2", "2h"], ["H4", "4h"], ["H8", "8h"], ["H12", "12h"],
     ["D", "1d"], ["3D", "3d"], ["1W", "1w"], ["2W", "1w", true], ["M", "1M"]
   ].map(([label, interval, biweekly = false]) => ({ label, interval, biweekly }));
   const DEFAULTS = { visible: true, collapsed: false, selected: "D", zoomBars: 120, panBars: 0, priceShift: 0, priceScale: 1, left: 8, top: 70, width: null, height: 560, pricePercent: 64, crossMode: true, fibDrawings: {}, toolDrawings: {}, toolDefaults: { text: { color: "#111111", fontSize: 14 }, trend: { color: "#f23645", lineWidth: 4, dash: "solid" } } };
   const UI_DEFAULTS_VERSION = 2;
-  const state = { ...DEFAULTS, symbol: null, socket: null, raw: [], closes: [], times: [], rows: [], hoverIndex: null, hoverPane: null, hoverYRatio: null, drawingTool: null, fibDraft: null, toolDraft: null, selectedDrawing: null, drawingHitAreas: [], menuPosition: null, fullscreen: false, restoreGeometry: null, historyPast: [], historyFuture: [] };
+  const state = { ...DEFAULTS, symbol: null, socket: null, raw: [], closes: [], times: [], rows: [], hoverIndex: null, hoverPane: null, hoverYRatio: null, drawingTool: null, fibDraft: null, toolDraft: null, selectedDrawing: null, drawingHitAreas: [], menuPosition: null, fullscreen: false, restoreGeometry: null, historyPast: [], historyFuture: [], loadingOlder: false, historyExhausted: false, loadGeneration: 0 };
   let shadow, resizeTimer, syncReloadTimer, syncWriteQueue = Promise.resolve();
   const svg = (body) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
   const collapseContent = (collapsed) => collapsed ? `<img src="${chrome.runtime.getURL("icons/icon32.png")}" alt="" draggable="false">` : ICONS.collapse;
   const ICONS = {
-    fib: svg('<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="7" cy="6" r="1.8"/><circle cx="16" cy="12" r="1.8"/><circle cx="10" cy="18" r="1.8"/>'),
-    long: svg('<path d="M6 5v14M6 6h12M6 12h9M6 18h12"/><circle cx="6" cy="6" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/>'),
-    range: svg('<path d="M7 5h10M7 19h10M12 5v14M9.5 8 12 5l2.5 3M9.5 16 12 19l2.5-3"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/>'),
+    fib: svg('<path d="M4 5h16M4 12h13M7 19h13"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/>'),
+    long: svg('<path d="M7 5h13M12 8v4h8M7 19h13"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/>'),
+    range: svg('<path d="M4 5h13M12 8v11M7 19h13M9.5 10.5 12 8l2.5 2.5"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/>'),
     trend: svg('<path d="m5.5 18.5 13-13"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="5.5" r="2"/>'),
     text: svg('<path d="M5 5h14M12 5v14M8.5 19h7"/><path d="M7 5v2M17 5v2"/>'),
     reset: svg('<path d="M4 12a8 8 0 1 0 2.3-5.7L4 9M4 4v5h5"/>'),
@@ -74,7 +74,7 @@
     if ("fibDrawings" in data || "toolDrawings" in data) syncWriteQueue = syncWriteQueue.then(() => syncDrawingMaps(state.fibDrawings, state.toolDrawings));
     return syncWriteQueue;
   }
-  const tf = () => TFS.find((x) => x.label === state.selected) || TFS[5];
+  const tf = () => TFS.find((x) => x.label === state.selected) || TFS.find((x) => x.label === "D");
 
   function symbolFromUrl() {
     const m = decodeURIComponent(location.pathname).toUpperCase().match(/\/TRADE\/([A-Z0-9]+)[_\-]([A-Z0-9]+)/);
@@ -109,7 +109,7 @@
     for (const row of state.raw) {
       if (Number.isFinite(row.time) && row.time <= Date.now() + 60000) unique.set(row.time, row);
     }
-    state.raw = [...unique.values()].sort((a, b) => a.time - b.time).slice(-1000);
+    state.raw = [...unique.values()].sort((a, b) => a.time - b.time);
     let rows = state.raw;
     if (tf().biweekly) {
       const span = 14 * 86400000, monday1970 = Date.UTC(1970, 0, 5), buckets = new Map();
@@ -133,7 +133,7 @@
   }
   function formatTime(timestamp) {
     const d = new Date(timestamp), pad = (n) => String(n).padStart(2, "0"), label = tf().label;
-    if (label.startsWith("H")) return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:00`;
+    if (label === "30m" || label.startsWith("H")) return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     if (label === "M") return `${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
   }
@@ -146,7 +146,7 @@
     if (!state.times.length) return Date.now();
     const last = state.times.length - 1;
     if (tf().label === "M") { const d = new Date(state.times[last]); d.setUTCMonth(d.getUTCMonth() + index - last); return d.getTime(); }
-    const fixedSteps = { H1: 3600000, H2: 7200000, H4: 14400000, H8: 28800000, H12: 43200000, D: 86400000, "3D": 259200000, "1W": 604800000, "2W": 1209600000 }, step = fixedSteps[tf().label] || (last > 0 ? state.times[last] - state.times[last - 1] : 3600000);
+    const fixedSteps = { "30m": 1800000, H1: 3600000, H2: 7200000, H4: 14400000, H8: 28800000, H12: 43200000, D: 86400000, "3D": 259200000, "1W": 604800000, "2W": 1209600000 }, step = fixedSteps[tf().label] || (last > 0 ? state.times[last] - state.times[last - 1] : 3600000);
     return state.times[last] + (index - last) * step;
   }
   function timeTicks(start, width) {
@@ -336,12 +336,24 @@
 
   async function load() {
     if (!state.symbol) return; if (state.socket) { state.socket.onclose = null; state.socket.close(); state.socket = null; }
-    const current = tf(), status = shadow.querySelector(".status"); status.textContent = "Đang tải…";
+    const current = tf(), status = shadow.querySelector(".status"), generation = ++state.loadGeneration; state.loadingOlder = false; state.historyExhausted = false; status.textContent = "Đang tải…";
     try {
       const limit = 1000, url = `https://api.binance.com/api/v3/klines?symbol=${state.symbol}&interval=${current.interval}&limit=${limit}`;
       const response = await fetch(url); if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      state.raw = (await response.json()).map((k) => ({ time: Number(k[0]), open: Number(k[1]), high: Number(k[2]), low: Number(k[3]), close: Number(k[4]) })); state.panBars = 0; rebuild(); render(); status.textContent = "LIVE"; connect();
+      const payload = await response.json(); if (generation !== state.loadGeneration) return; state.raw = payload.map((k) => ({ time: Number(k[0]), open: Number(k[1]), high: Number(k[2]), low: Number(k[3]), close: Number(k[4]) })); state.historyExhausted = payload.length < limit; state.panBars = 0; rebuild(); render(); status.textContent = "LIVE"; connect();
     } catch (e) { status.textContent = `Lỗi: ${e.message}`; }
+  }
+  async function maybeLoadOlder() {
+    if (state.loadingOlder || state.historyExhausted || !state.raw.length || !state.symbol) return;
+    const oldestVisible = viewRange().start; if (oldestVisible > 24) return;
+    const current = tf(), generation = state.loadGeneration, symbol = state.symbol, status = shadow.querySelector(".status"), endTime = state.raw[0].time - 1; state.loadingOlder = true; status.textContent = "Đang tải lịch sử…";
+    try {
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${current.interval}&endTime=${endTime}&limit=1000`, response = await fetch(url); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json(); if (generation !== state.loadGeneration || symbol !== state.symbol || current.label !== tf().label) return;
+      const older = payload.map((k) => ({ time: Number(k[0]), open: Number(k[1]), high: Number(k[2]), low: Number(k[3]), close: Number(k[4]) })); if (!older.length) state.historyExhausted = true; else { state.raw = [...older, ...state.raw]; state.historyExhausted = older.length < 1000; rebuild(); render(); }
+      status.textContent = state.historyExhausted ? "LIVE · hết lịch sử" : "LIVE";
+    } catch (e) { if (generation === state.loadGeneration) status.textContent = `Lỗi lịch sử: ${e.message}`; }
+    finally { if (generation === state.loadGeneration) state.loadingOlder = false; }
   }
   function connect() {
     const current = tf(), socket = new WebSocket(`wss://stream.binance.com:9443/ws/${state.symbol.toLowerCase()}@kline_${current.interval}`); state.socket = socket;
@@ -487,33 +499,39 @@
     canvas.addEventListener("pointerup", (e) => { if (!dragStart || !state.toolDraft) return; const distance = Math.hypot(e.clientX - dragStart.clientX, e.clientY - dragStart.clientY); dragStart = null; if (distance > 5) finish(); });
     addEventListener("keydown", (e) => { if (e.key === "Escape" && state.drawingTool === type) { state.drawingTool = null; state.toolDraft = null; button.classList.remove("active"); render(); } });
   }
+  function enablePriceScaleZoom(hitbox) {
+    let startY = null, startScale = 1, anchorRatio = .5, anchorPrice = 0;
+    const hover = (e) => { const rect = hitbox.getBoundingClientRect(); state.hoverPane = "price"; state.hoverYRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height))); render(); };
+    hitbox.addEventListener("pointerdown", (e) => { const rect = hitbox.getBoundingClientRect(), view = state.lastPriceView; e.preventDefault(); e.stopPropagation(); startY = e.clientY; startScale = state.priceScale; anchorRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height))); anchorPrice = view ? view.high - anchorRatio * view.range : 0; hitbox.setPointerCapture(e.pointerId); hitbox.classList.add("dragging"); });
+    hitbox.addEventListener("pointermove", (e) => { hover(e); if (startY == null) return; e.preventDefault(); e.stopPropagation(); const view = state.lastPriceView; state.priceScale = Math.max(.15, Math.min(20, startScale * Math.exp((startY - e.clientY) * .012))); const newRange = (view?.baseRange || 1) / state.priceScale, desiredMid = anchorPrice - (.5 - anchorRatio) * newRange; state.priceShift = (desiredMid - (view?.baseMid || 0)) / (view?.baseRange || 1); render(); });
+    const stop = (e) => { if (startY == null) return; e?.stopPropagation(); startY = null; hitbox.classList.remove("dragging"); storeSet({ priceShift: state.priceShift, priceScale: state.priceScale }); };
+    hitbox.addEventListener("pointerup", stop); hitbox.addEventListener("pointercancel", stop); hitbox.addEventListener("mouseleave", () => { if (startY == null) { state.hoverPane = null; state.hoverYRatio = null; render(); } });
+  }
   function enablePan(canvas) {
-    let startX = null, startY = null, startPan = 0, startShift = 0, startZoom = 0, startScale = 1, anchorRatio = 1, anchorIndex = 0, anchorPrice = 0, mode = "pan";
+    let startX = null, startY = null, startPan = 0, startShift = 0, startZoom = 0, anchorRatio = 1, anchorIndex = 0, mode = "pan";
     canvas.addEventListener("pointerdown", (e) => {
       if (state.drawingTool) return;
       const rect = canvas.getBoundingClientRect(); startX = e.clientX; startY = e.clientY; startPan = state.panBars; startShift = state.priceShift;
-      mode = canvas.classList.contains("rsi-canvas") && e.clientY - rect.top > rect.height - 30 ? "timeZoom" : canvas.classList.contains("price-canvas") && e.clientX - rect.left > rect.width - 58 ? "priceZoom" : state.crossMode && canvas.classList.contains("price-canvas") ? "crossPan" : "pan";
+      mode = canvas.classList.contains("rsi-canvas") && e.clientY - rect.top > rect.height - 30 ? "timeZoom" : state.crossMode && canvas.classList.contains("price-canvas") ? "crossPan" : "pan";
       if (mode === "timeZoom") { const x = 8, w = rect.width - 82; startZoom = state.zoomBars; anchorRatio = Math.max(0, Math.min(1, (e.clientX - rect.left - x) / Math.max(1, w))); anchorIndex = viewRange().start + anchorRatio * (startZoom - 1); }
-      if (mode === "priceZoom") { startScale = state.priceScale; anchorRatio = Math.max(0, Math.min(1, (e.clientY - rect.top - 8) / Math.max(1, rect.height - 16))); const v = state.lastPriceView; anchorPrice = v ? v.high - anchorRatio * v.range : 0; }
       canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener("pointermove", (e) => {
       if (startX == null) return;
       const rect = canvas.getBoundingClientRect();
       if (mode === "timeZoom") { const nextZoom = Math.max(20, Math.min(1000, Math.round(startZoom + (e.clientX - startX) / 3))), currentRatio = Math.max(0, Math.min(1, (e.clientX - rect.left - 8) / Math.max(1, rect.width - 82))), nextStart = Math.round(anchorIndex - currentRatio * (nextZoom - 1)); state.zoomBars = nextZoom; state.panBars = clampPan(state.closes.length - nextZoom - nextStart, nextZoom); const slider = shadow.querySelector(".zoom input"); slider.value = state.zoomBars; shadow.querySelector(".zoom output").value = state.zoomBars; }
-      else if (mode === "priceZoom") { const v = state.lastPriceView; state.priceScale = Math.max(.15, Math.min(20, startScale * Math.exp((startY - e.clientY) * .012))); const newRange = (v?.baseRange || 1) / state.priceScale, desiredMid = anchorPrice - (.5 - anchorRatio) * newRange; state.priceShift = (desiredMid - (v?.baseMid || 0)) / (v?.baseRange || 1); }
       else if (mode === "crossPan") { const pixelsPerBar = Math.max(2, rect.width / state.zoomBars), delta = Math.round((e.clientX - startX) / pixelsPerBar), plotHeight = Math.max(1, rect.height - 16); state.panBars = clampPan(startPan + delta); state.priceShift = startShift + (e.clientY - startY) / plotHeight / Math.max(.15, state.priceScale); }
       else { const pixelsPerBar = Math.max(2, rect.width / state.zoomBars), delta = Math.round((e.clientX - startX) / pixelsPerBar); state.panBars = clampPan(startPan + delta); }
-      render();
+      render(); if (mode === "pan" || mode === "crossPan") maybeLoadOlder();
     });
-    const stop = () => { if (startX != null) storeSet({ zoomBars: state.zoomBars, priceShift: state.priceShift, priceScale: state.priceScale, panBars: state.panBars }); startX = null; canvas.classList.remove("dragging"); };
+    const stop = () => { if (startX != null) { storeSet({ zoomBars: state.zoomBars, priceShift: state.priceShift, priceScale: state.priceScale, panBars: state.panBars }); maybeLoadOlder(); } startX = null; canvas.classList.remove("dragging"); };
     canvas.addEventListener("pointerup", stop); canvas.addEventListener("pointercancel", stop);
     canvas.addEventListener("dblclick", () => { state.panBars = 0; render(); });
   }
   function enableCrosshair(canvas) {
     canvas.addEventListener("mousemove", (e) => {
       if (!state.closes.length) return;
-      const hoverRect = canvas.getBoundingClientRect(); canvas.classList.toggle("time-scale", canvas.classList.contains("rsi-canvas") && e.clientY - hoverRect.top > hoverRect.height - 30); canvas.classList.toggle("price-scale", canvas.classList.contains("price-canvas") && e.clientX - hoverRect.left > hoverRect.width - 58); state.hoverPane = canvas.classList.contains("price-canvas") ? "price" : "rsi"; state.hoverYRatio = Math.max(0, Math.min(1, (e.clientY - hoverRect.top - 8) / Math.max(1, hoverRect.height - 16)));
+      const hoverRect = canvas.getBoundingClientRect(); canvas.classList.toggle("time-scale", canvas.classList.contains("rsi-canvas") && e.clientY - hoverRect.top > hoverRect.height - 30); state.hoverPane = canvas.classList.contains("price-canvas") ? "price" : "rsi"; state.hoverYRatio = Math.max(0, Math.min(1, (e.clientY - hoverRect.top - 8) / Math.max(1, hoverRect.height - 16)));
       const rect = canvas.getBoundingClientRect(), x = 8, w = rect.width - 82, { start } = viewRange();
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left - x) / Math.max(1, w)));
       state.hoverIndex = start + Math.round(ratio * Math.max(0, state.zoomBars - 1)); render();
@@ -561,8 +579,10 @@
   function mount() {
     const host = document.createElement("div"); host.id = "binance-rsi-mtf-host"; document.documentElement.appendChild(host); shadow = host.attachShadow({ mode: "open" });
     shadow.innerHTML = `<style>:host{all:initial}.panel,.panel *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='24' viewBox='0 0 18 24'%3E%3Cpath d='M1 1v17l5-5 3 8 3-1-3-8h7z' fill='black'/%3E%3C/svg%3E") 1 1,default!important}.panel{position:fixed;z-index:2147483646;min-width:500px;min-height:240px;max-width:100vw;max-height:100vh;resize:both;overflow:hidden;display:flex;flex-direction:column;background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#111;font:12px Arial,sans-serif;box-shadow:none}.hidden{display:none}.chart{flex:1;min-height:0;padding:7px 5px 2px;background:transparent}.chart canvas{width:100%;height:100%;display:block;touch-action:none}header{height:42px;flex:none;display:flex;flex-wrap:nowrap;align-items:center;gap:7px;padding:0 8px;background:rgba(255,255,255,.18);border-top:1px solid rgba(255,255,255,.28);user-select:none;overflow-x:auto;overflow-y:hidden;white-space:nowrap}header strong{color:#8a6900}.symbol{color:#111}.status{color:#087a55;font-size:10px}.tabs{display:flex;align-items:center;gap:3px}.values{display:flex;align-items:center;gap:8px;margin-left:auto}.values small{color:#222}.rsi{color:#8e24aa}.fast{color:#2e7d32}.slow{color:#245eae}.zoom{display:flex;align-items:center;gap:4px;color:#111}.zoom input{width:95px;accent-color:#c99b00}.zoom output{width:27px;text-align:right;color:#111}button{border:0;background:rgba(255,255,255,.28);color:#111}.tab{padding:5px 9px;border-radius:4px;font-weight:700}.tab:hover,.refresh:hover,.collapse:hover{background:rgba(255,255,255,.55)}.tab.active{background:#f0b90b;color:#111}.refresh,.collapse{padding:5px 8px;border:1px solid rgba(255,255,255,.35);border-radius:4px;font-weight:700}.close{font-size:19px;background:transparent}.panel.collapsed{width:42px!important;height:38px!important;min-width:42px;min-height:38px;resize:none}.collapsed .chart,.collapsed header>*:not(.collapse){display:none}.collapsed header{height:38px;padding:0;justify-content:center;border:0;background:rgba(255,255,255,.28);overflow:hidden}.collapsed .collapse{display:block;width:100%;height:100%;border:0}</style><div class="panel"><main class="chart"><canvas title="Kéo ngang để xem quá khứ; nhấp đúp để về hiện tại"></canvas></main><header><strong>RSI · <span class="symbol">--</span></strong><span class="status"></span><nav class="tabs">${TFS.map((x) => `<button class="tab" data-tf="${x.label}">${x.label}</button>`).join("")}</nav><span class="values"></span><label class="zoom">Zoom <input type="range" min="40" max="240" step="10"><output></output></label><button class="refresh" title="Tải lại và về giá hiện tại">↻</button><button class="collapse" title="Thu gọn/mở rộng">▾</button><button class="close" title="Ẩn">×</button></header></div>`;
-    const rsiPane = shadow.querySelector(".chart"), rsiCanvas = rsiPane.querySelector("canvas"); rsiCanvas.className = "rsi-canvas";
+    const rsiPane = shadow.querySelector(".chart"), rsiCanvas = rsiPane.querySelector("canvas"), bottomBar = shadow.querySelector("header"); rsiCanvas.className = "rsi-canvas"; bottomBar.classList.add("bottom-bar");
+    const topbar = document.createElement("div"); topbar.className = "topbar"; topbar.appendChild(shadow.querySelector(".tabs")); rsiPane.before(topbar);
     const pricePane = document.createElement("main"); pricePane.className = "price-chart"; pricePane.innerHTML = '<canvas class="price-canvas" title="Chart giá dùng chung time scale với RSI"></canvas>'; rsiPane.before(pricePane);
+    const priceScaleHitbox = document.createElement("div"); priceScaleHitbox.className = "price-scale-hitbox"; priceScaleHitbox.title = "Kéo dọc để zoom trục giá"; pricePane.appendChild(priceScaleHitbox);
     const splitter = document.createElement("div"); splitter.className = "splitter"; splitter.innerHTML = '<button tabindex="-1" aria-label="Kéo để thay đổi chiều cao hai pane" title="Kéo để thay đổi chiều cao hai pane">↕</button>'; pricePane.after(splitter);
     const splitterButton = splitter.querySelector("button"); splitterButton.addEventListener("pointerdown", (e) => { e.preventDefault(); splitterButton.blur(); });
     const theme = document.createElement("style");
@@ -570,7 +590,7 @@
     theme.textContent += ".price-chart,.chart{padding-left:44px}.drawing-tools{position:absolute;z-index:15;left:6px;top:10px;width:32px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(255,255,255,.96);border:1px solid #d1d5db;border-radius:6px;box-shadow:0 2px 7px rgba(0,0,0,.10)}.drawing-tool{width:26px;height:27px;border-radius:4px;background:#fff;border:1px solid transparent;font-size:14px;font-weight:700;user-select:none;-webkit-user-select:none;caret-color:transparent;outline:none}.drawing-tool:hover{background:#f3f4f6}.drawing-tool.active{color:#2962ff;background:#edf2ff;border-color:#9db5ff}.drawing-menu{position:absolute;z-index:18;display:none;height:31px;align-items:center;gap:7px;padding:0 7px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;box-shadow:0 3px 12px rgba(0,0,0,.18);user-select:none;-webkit-user-select:none}.drawing-menu.show{display:flex}.drawing-name{font-size:10px;color:#555;white-space:nowrap}.drawing-delete{width:27px;height:25px;border-radius:4px;background:#fff;font-size:16px;outline:none}.drawing-delete:hover{background:#fee2e2;color:#b91c1c}.collapsed .drawing-tools,.collapsed .drawing-menu{display:none}";
     theme.textContent += ".panel button svg,.drawing-menu svg{width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.drawing-tool{display:grid;place-items:center;color:#374151}.drawing-tools{border-color:#e5e7eb;box-shadow:0 5px 16px rgba(15,23,42,.13)}.drawing-menu{height:36px;border-radius:8px;padding:0 8px 0 4px;gap:5px}.drawing-menu-handle{width:25px;height:30px;display:grid;place-items:center;color:#9ca3af;cursor:move!important}.drawing-menu-handle svg{width:20px;height:20px}.drawing-delete{display:grid;place-items:center;color:#4b5563}.drawing-delete svg{width:18px;height:18px}.zoom{display:none!important}header>button{display:grid;place-items:center;min-width:28px;height:28px;padding:0;border:1px solid #e5e7eb;border-radius:6px;background:#fff;color:#374151}header>button:hover{background:#f3f4f6;color:#111}.panel.fullscreen{left:0!important;top:0!important;width:100vw!important;height:100vh!important;border-radius:0!important}.fullscreen .resize-handle{display:none}.fullscreen-button.active{background:#eef2ff;color:#2962ff;border-color:#a5b4fc}.collapsed .collapse{display:grid!important;place-items:center}.collapsed .collapse svg{width:24px;height:24px}";
     theme.textContent += ".tool-settings{display:none;align-items:center;gap:4px;padding-left:5px;border-left:1px solid #e5e7eb}.drawing-menu[data-type=text] .text-settings,.drawing-menu[data-type=trend] .trend-settings{display:flex}.tool-settings input[type=color]{width:27px;height:25px;padding:2px;border:1px solid #d1d5db;border-radius:5px;background:#fff}.tool-settings select{height:25px;border:1px solid #d1d5db;border-radius:5px;background:#fff;color:#111;font:11px Arial;padding:0 4px;outline:none}.text-editor{position:absolute;z-index:19;display:none;min-width:150px;min-height:34px;padding:6px 8px;border:1px solid #2962ff;border-radius:5px;background:rgba(255,255,255,.96);color:#111;font:14px Arial;resize:both;outline:none;box-shadow:0 3px 12px rgba(0,0,0,.15)}.text-editor.show{display:block}";
-    theme.textContent += ".price-chart,.chart{padding-left:54px}.drawing-tools{left:0;top:0;bottom:43px;width:46px;height:auto;padding:7px 6px;gap:4px;border-width:0 1px 0 0;border-radius:0;box-shadow:none;box-sizing:border-box}.drawing-tool{width:32px;height:31px;padding:0;display:grid;place-items:center;flex:none}.drawing-tool svg{width:18px;height:18px;margin:auto;stroke-width:1.55}.drawing-tools{box-shadow:none!important}.tool-separator{width:28px;height:1px;flex:none;margin-top:auto;margin-bottom:3px;background:#e5e7eb}.drawing-tool:disabled{opacity:.28;pointer-events:none}.clear-drawings:hover{color:#b91c1c;background:#fee2e2}.panel.fullscreen .drawing-tools{bottom:43px}.panel.collapsed{border-color:rgba(32,36,43,.38);box-shadow:none}.collapsed .collapse img{width:34px;height:34px;display:block;object-fit:contain;pointer-events:none;user-select:none}.collapsed .collapse{background:rgba(255,255,255,.94)!important}";
+    theme.textContent += ".topbar{height:38px;flex:none;display:flex;align-items:center;padding:0 10px 0 54px;background:#fff;border-bottom:1px solid #e5e7eb;box-sizing:border-box;user-select:none}.topbar .tabs{gap:3px}.topbar .tab{min-width:32px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:5px;background:#fff;font-size:11px}.topbar .tab:hover{background:#f3f4f6;border-color:#e5e7eb}.topbar .tab.active{background:#e8f0ff;color:#2962ff;border-color:#b7c8ff}.price-chart{position:relative}.price-scale-hitbox{position:absolute;z-index:16;top:7px;right:5px;bottom:2px;width:74px;background:transparent;cursor:ns-resize!important;touch-action:none}.price-chart,.chart{padding-left:54px}.drawing-tools{left:0;top:38px;bottom:43px;width:50px;height:auto;padding:7px 6px;gap:4px;border-width:0 1px 0 0;border-radius:0;box-shadow:none;box-sizing:border-box}.drawing-tool{width:38px;height:36px;padding:0;display:grid;place-items:center;flex:none}.drawing-tool svg{width:24px!important;height:24px!important;margin:auto;stroke-width:1.45}.drawing-tools{box-shadow:none!important}.tool-separator{width:34px;height:1px;flex:none;margin-top:auto;margin-bottom:3px;background:#e5e7eb}.drawing-tool:disabled{opacity:.28;pointer-events:none}.clear-drawings:hover{color:#b91c1c;background:#fee2e2}.bottom-bar button{transition:background-color .14s ease,border-color .14s ease,color .14s ease}.bottom-bar button:not(:disabled):hover{background:#f3f4f6!important;border-color:#d1d5db!important;color:#111!important}.panel.fullscreen .drawing-tools{bottom:43px}.panel.collapsed{border-color:rgba(32,36,43,.38);box-shadow:none}.collapsed .topbar{display:none}.collapsed .collapse img{width:34px;height:34px;display:block;object-fit:contain;pointer-events:none;user-select:none}.collapsed .collapse{background:rgba(255,255,255,.94)!important}";
     shadow.appendChild(theme);
     const panel = shadow.querySelector(".panel");
     const drawingToolbar = document.createElement("aside"); drawingToolbar.className = "drawing-tools"; drawingToolbar.innerHTML = `<button class="drawing-tool fib-tool" tabindex="-1" title="Fibonacci Retracement" aria-label="Fibonacci Retracement">${ICONS.fib}</button><button class="drawing-tool long-tool" tabindex="-1" title="Long Position" aria-label="Long Position">${ICONS.long}</button><button class="drawing-tool range-tool" tabindex="-1" title="Price Range" aria-label="Price Range">${ICONS.range}</button><button class="drawing-tool trend-tool" tabindex="-1" title="Trend Line (giữ Shift để khóa ngang/dọc)" aria-label="Trend Line">${ICONS.trend}</button><button class="drawing-tool text-tool" tabindex="-1" title="Text" aria-label="Text">${ICONS.text}</button><span class="tool-separator" aria-hidden="true"></span><button class="drawing-tool undo-drawing" tabindex="-1" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">${ICONS.undo}</button><button class="drawing-tool redo-drawing" tabindex="-1" title="Redo (Ctrl/Cmd+Shift+Z hoặc Ctrl+Y)" aria-label="Redo">${ICONS.redo}</button><button class="drawing-tool clear-drawings" tabindex="-1" title="Xóa tất cả drawing của symbol hiện tại" aria-label="Xóa tất cả drawing">${ICONS.trash}</button>`; panel.appendChild(drawingToolbar);
@@ -619,14 +639,14 @@
       state.collapsed = !state.collapsed; panel.classList.toggle("collapsed", state.collapsed); collapseButton.innerHTML = collapseContent(state.collapsed); collapseButton.setAttribute("aria-label", state.collapsed ? "Mở ChartForge RSI" : "Thu gọn ChartForge RSI");
       if (!state.collapsed) { geometry(); requestAnimationFrame(render); } storeSet({ collapsed: state.collapsed, width: state.width, height: state.height });
     };
-    closeButton.onclick = () => toggle(false); drag(shadow.querySelector("header"), panel);
+    closeButton.onclick = () => toggle(false); drag(shadow.querySelector("header"), panel); drag(topbar, panel);
     const priceCanvas = pricePane.querySelector("canvas"), trendButton = drawingToolbar.querySelector(".trend-tool"); enableFibTool(priceCanvas, drawingToolbar.querySelector(".fib-tool")); enableTwoPointTool(priceCanvas, drawingToolbar.querySelector(".long-tool"), "long"); enableTwoPointTool(priceCanvas, drawingToolbar.querySelector(".range-tool"), "range"); enableTwoPointTool(priceCanvas, trendButton, "trend", "price", true); enableTwoPointTool(rsiCanvas, trendButton, "trend", "rsi", false); enableTextTool(priceCanvas, drawingToolbar.querySelector(".text-tool"), textEditor, panel); enableDrawingSelection(priceCanvas, "price"); enableDrawingSelection(rsiCanvas, "rsi");
     addEventListener("keydown", (e) => {
       const target = e.composedPath?.()[0] || e.target, editing = target?.matches?.("input,textarea,select,[contenteditable=true]"); if (editing || !(e.ctrlKey || e.metaKey) || e.altKey) return;
       const key = e.key.toLowerCase(), redo = key === "y" || (key === "z" && e.shiftKey), undo = key === "z" && !e.shiftKey;
       if ((undo && state.historyPast.length) || (redo && state.historyFuture.length)) { e.preventDefault(); if (redo) redoDrawing(); else undoDrawing(); }
     });
-    [rsiCanvas, priceCanvas].forEach((canvas) => { enablePan(canvas); enableCrosshair(canvas); enableWheelZoom(canvas); });
+    [rsiCanvas, priceCanvas].forEach((canvas) => { enablePan(canvas); enableCrosshair(canvas); enableWheelZoom(canvas); }); enablePriceScaleZoom(priceScaleHitbox);
     enableSplitter(splitter, pricePane, rsiPane);
     new ResizeObserver(() => { if (state.collapsed || state.fullscreen) return; render(); clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const r = panel.getBoundingClientRect(); state.width = Math.round(r.width); state.height = Math.round(r.height); storeSet({ width: state.width, height: state.height }); }, 300); }).observe(panel);
   }
