@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.4.1";
+export const APP_VERSION = "0.4.2";
 export const ENABLED_SYMBOLS = Object.freeze(["BTCUSDT", "ETHUSDT", "DOGEUSDT"]);
 export const TIMEFRAMES = Object.freeze([
   {label:"30m",interval:"30m",ms:1_800_000},{label:"H1",interval:"1h",ms:3_600_000},

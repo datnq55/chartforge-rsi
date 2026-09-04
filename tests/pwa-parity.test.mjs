@@ -64,6 +64,13 @@ test("Pages rebuilds canonical source and runtime cache excludes retired modules
   assert.doesNotMatch(sw,/"\.\/js\/(?:math|binance)\.js"/);
 });
 
+test("PWA keeps market status before account control at the right edge",async()=>{
+  const source=await readFile(new URL("web/js/app.js",root),"utf8");
+  assert.match(source,/\.topbar \.status\{margin-left:auto\}\.pwa-auth\{margin-left:4px\}/);
+  assert.match(source,/topbar\.append\(authButton\)/);
+  assert.doesNotMatch(source,/insertBefore\(authButton, status\)/);
+});
+
 test("Firestore rules accept the canonical settings and drawing style ranges",async()=>{
   const rules=await readFile(new URL("web/firestore.rules",root),"utf8");
   for(const setting of ["priceShift","priceScale","crossMode"])assert.match(rules,new RegExp(`data\\.values\\.${setting}`));

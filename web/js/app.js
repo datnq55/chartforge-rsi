@@ -10,6 +10,7 @@ import {
 } from "./storage.js";
 import { createCanonicalChromeFacade } from "./storage-adapter.js";
 import { createCloudSync } from "./firebase-sync.js";
+import { createLiveTitleController } from "./title-price.js";
 
 const rootUrl = new URL("../", import.meta.url);
 const bootstrap = document.querySelector("#pwa-bootstrap");
@@ -23,6 +24,10 @@ chromeFacade.runtime.getURL = path => path === "icons/icon32.png"
   : new URL(path, rootUrl).href;
 globalThis.chrome = chromeFacade;
 
+const remembered = await getSetting("lastSymbol");
+const symbol = resolveSymbol(location.search, remembered);
+const liveTitle = createLiveTitleController(document, symbol);
+
 const nativeFetch = globalThis.fetch.bind(globalThis);
 globalThis.fetch = async (input, init) => {
   const raw = typeof input === "string" || input instanceof URL ? String(input) : input?.url;
@@ -33,19 +38,34 @@ globalThis.fetch = async (input, init) => {
     try {
       const response = await nativeFetch(input instanceof Request ? new Request(replacement, input) : replacement, init);
       if (!response.ok) throw new Error(`Binance HTTP ${response.status}`);
-      response.clone().json().then(rows => setMarketCache(cacheKey, rows)).catch(() => undefined);
+      response.clone().json().then(rows => {
+        setMarketCache(cacheKey, rows).catch(() => undefined);
+        if (url.searchParams.get("symbol") === symbol && rows.length) liveTitle.update(rows.at(-1)?.[4], rows.at(-1)?.[0], url.searchParams.get("interval"));
+      }).catch(() => undefined);
       return response;
     } catch (error) {
       const cached = await getMarketCache(cacheKey);
-      if (cached.length) return new Response(JSON.stringify(cached), { status: 200, headers: { "content-type": "application/json", "x-chartforge-cache": "offline" } });
+      if (cached.length) {
+        if (url.searchParams.get("symbol") === symbol) liveTitle.update(cached.at(-1)?.[4], cached.at(-1)?.[0], url.searchParams.get("interval"));
+        return new Response(JSON.stringify(cached), { status: 200, headers: { "content-type": "application/json", "x-chartforge-cache": "offline" } });
+      }
       throw error;
     }
   }
   return nativeFetch(input, init);
 };
 
-const remembered = await getSetting("lastSymbol");
-const symbol = resolveSymbol(location.search, remembered);
+if (globalThis.WebSocket) {
+  const NativeWebSocket = globalThis.WebSocket;
+  let socketGeneration = 0;
+  globalThis.WebSocket = new Proxy(NativeWebSocket, { construct(Target, args) {
+    const socket = Reflect.construct(Target, args),generation = ++socketGeneration;
+    socket.addEventListener("message", event => {
+      try { const payload = JSON.parse(event.data); if (generation === socketGeneration && payload?.k?.s === symbol) liveTitle.update(payload.k.c, payload.k.t, payload.k.i); } catch {}
+    });
+    return socket;
+  }});
+}
 const initialUrl = new URL(location.href);
 initialUrl.searchParams.set("symbol", symbol);
 history.replaceState(null, "", initialUrl);
@@ -84,7 +104,7 @@ platformTheme.textContent = `
   .pwa-shell .chart-identity{position:relative}
   .pwa-auth{height:34px;min-width:34px;max-width:112px;padding:0 9px;display:flex;align-items:center;justify-content:center;gap:6px;flex:none;border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#374151;font:600 11px Arial}
   .pwa-auth:hover{background:#f3f4f6}.pwa-auth img{width:22px;height:22px;border-radius:50%}.pwa-auth-dot{width:7px;height:7px;border-radius:50%;background:#9ca3af;flex:none}.pwa-auth[data-sync=syncing] .pwa-auth-dot{background:#eab308}.pwa-auth[data-sync=synced] .pwa-auth-dot{background:#16a34a}.pwa-auth[data-sync=error] .pwa-auth-dot{background:#dc2626}
-  .pwa-shell .topbar .status{margin-left:0}.pwa-auth{margin-left:auto}
+  .pwa-shell .topbar .status{margin-left:auto}.pwa-auth{margin-left:4px}
   .pwa-account-menu{position:absolute;z-index:30;display:none;right:8px;top:43px;width:205px;padding:7px;background:#fff;border:1px solid #d1d5db;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.20)}.pwa-account-menu.show{display:grid;gap:3px}.pwa-account-menu button{height:38px;padding:0 10px;text-align:left;border:0;border-radius:6px;background:#fff;color:#111;font:12px Arial}.pwa-account-menu button:hover{background:#f3f4f6}.pwa-account-menu .danger{color:#b42318}
   .pwa-toast{position:absolute;z-index:40;left:50%;bottom:54px;max-width:min(420px,calc(100% - 24px));padding:9px 14px;border-radius:7px;background:#171b26;color:#fff;font:12px Arial;opacity:0;pointer-events:none;transform:translateX(-50%);transition:opacity .18s}.pwa-toast.show{opacity:1}
   .pwa-shell .replay-date-dialog,.pwa-shell .replay-exit-dialog{width:min(330px,calc(100% - 24px))}
@@ -112,7 +132,7 @@ authButton.className = "pwa-auth";
 authButton.type = "button";
 authButton.dataset.sync = "idle";
 authButton.innerHTML = '<span class="pwa-auth-label">Đăng nhập</span><i class="pwa-auth-dot"></i>';
-topbar.insertBefore(authButton, status);
+topbar.append(authButton);
 
 const accountMenu = document.createElement("div");
 accountMenu.className = "pwa-account-menu";

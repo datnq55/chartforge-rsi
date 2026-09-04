@@ -12,7 +12,7 @@
 
 ## PWA migration status
 
-- PWA canonical-port version: `0.4.1`; source lives in `web/`. The extension remains unchanged at 3.10.15 as canonical reference and fallback.
+- PWA canonical-port version: `0.4.2`; source lives in `web/`. The extension remains unchanged at 3.10.15 as canonical reference and fallback.
 - The former independent `web/js/chart.js` renderer is retired. `scripts/build-pwa-canonical.mjs` generates `web/js/canonical-content.js` byte-for-byte from `content.js` plus one generated-file banner; automated tests enforce source, SVG registry, DOM/CSS and deterministic Canvas-operation equivalence.
 - `web/js/app.js` is a platform adapter only: it supplies the Chrome-storage compatibility facade, full-viewport/mobile reflow, fixed symbol selector, Google account menu, JSON import/export, Binance CORS endpoint rewrite/cache and pinch input. Mobile does not emulate Shift/Snap; desktop physical Shift remains canonical.
 - Fixed symbol allowlist: `BTCUSDT`, `ETHUSDT`, `DOGEUSDT`.
@@ -25,8 +25,8 @@
 - Firebase project `chartforge-rsi` is configured with public Web client metadata in `web/firebase-config.js`. Real Google Auth and per-UID Firestore sync are wired; no service-account credential exists in the repository.
 - Local mutations commit to IndexedDB first, enter an idempotent queue, and flush on authenticated/online state. Realtime listeners pull settings/drawing changes without echoing them into the queue. Transactions resolve conflicts by revision, timestamp and device ID; deletions remain tombstones.
 - Synced settings are `lastSymbol`, `timeframe`, `visibleBars`, `pricePercent`, `priceShift`, `priceScale`, `crossMode` and Trend/Text `drawingDefaults`. Drawings sync under `users/{uid}/drawings/{id}`. Market cache, Replay and Undo/Redo remain device/session-only.
-- PWA 0.4.1 fixes Fibonacci persistence/type normalization, strips transient pointer coordinates from cloud anchors, serializes overlapping IndexedDB writes, preserves explicit per-drawing IDs through compound edit/delete operations, and lets later sync mutations proceed when one item is rejected. Firestore rules accept the full canonical pane ratio, Trend width and Text ranges.
-- Firebase Google Sign-In, the Standard-edition Firestore database in `asia-southeast1`, and the authorized domains are configured. The PWA 0.4.1 `web/firestore.rules` compiled and was deployed successfully on 2026-09-05; deploy only `firestore:rules` again when that file changes.
+- PWA 0.4.2 sanitizes existing Firestore settings maps before transactional writes, removing legacy local-only keys such as `panBars` that caused authenticated 403 retries while preserving the local setting and queued valid mutations. Status precedes the account control at the right edge, and the PWA-only tab title follows the current REST/WebSocket price.
+- Firebase Google Sign-In, the Standard-edition Firestore database in `asia-southeast1`, and the authorized domains are configured. The PWA 0.4.2 `web/firestore.rules` has authenticated Emulator coverage and deployed ruleset `2ddf9680-e7da-4114-bae6-63aa07af27fb`; deploy only `firestore:rules` again when that file changes.
 - `.github/workflows/pages.yml` validates and deploys the `web/` artifact to `https://datnq55.github.io/chartforge-rsi/` from the `main` branch.
 
 ## Current architecture

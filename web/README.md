@@ -1,4 +1,4 @@
-# ChartForge RSI PWA 0.4.1
+# ChartForge RSI PWA 0.4.2
 
 This directory is a dependency-free static PWA. Its chart UI and behavior are not an independent rewrite: `js/canonical-content.js` is generated directly from the unchanged extension `content.js`. The PWA adapter changes only the platform boundary: fixed symbol selection, IndexedDB/Firebase, full-page/mobile layout, asset URLs, Binance's browser-safe public endpoint and touch controls.
 
@@ -36,7 +36,7 @@ Before sign-in can work in production, verify these items in Firebase Console:
 1. Authentication → Sign-in method → enable **Google**.
 2. Firestore Database → create a database (production mode is fine because this repository supplies rules).
 3. Authentication → Settings → Authorized domains → add `datnq55.github.io`, `localhost`, and `127.0.0.1` if absent. New Firebase projects may not add localhost automatically.
-4. The PWA 0.4.1 `firestore.rules` compiled and was deployed to project `chartforge-rsi` on 2026-09-05. After a future rules change, deploy it with `npx firebase-tools deploy --only firestore:rules --project chartforge-rsi` from the repository root. Deployment is intentionally not automated by the Pages workflow.
+4. The PWA 0.4.2 `firestore.rules` is covered by authenticated Firestore Emulator CREATE/UPDATE/tombstone tests; ruleset `2ddf9680-e7da-4114-bae6-63aa07af27fb` was deployed to project `chartforge-rsi` on 2026-09-05. After a future rules change, deploy it with `npx firebase-tools deploy --only firestore:rules --project chartforge-rsi` from the repository root. Deployment is intentionally not automated by the Pages workflow.
 
 Stay on Spark; do not enable billing, Cloud Functions, account/order APIs or Firebase Hosting.
 
@@ -47,3 +47,5 @@ The extension renderer, complete Shadow DOM regions, CSS, SVG registry, chart sc
 `js/storage-adapter.js` translates the canonical symbol-keyed drawing maps to the existing per-ID IndexedDB/Firestore model. It preserves stable IDs, revisions, array order and tombstones, migrates the old `priceRange` name to canonical `range`, and rejects Replay, Undo/Redo, market rows, drafts and other session-only state. A real Google account sign-in and cross-device cloud-sync acceptance check still requires an interactive user session.
 
 Mobile uses direct touch gestures without a synthetic Shift/Snap control. Pinch cancels any pending one-finger chart pan before zooming and keeps its initial midpoint as the zoom anchor. Desktop physical-Shift behavior remains entirely canonical.
+
+PWA 0.4.2 strips legacy/local-only keys such as `panBars`, Replay and Undo/Redo from an existing Firestore settings document whenever a queued mutation retries. The right side of the topbar is ordered as market status followed by account control. The browser tab title is reset immediately on symbol selection, then updated from the latest REST close and every WebSocket kline tick, for example `79,757.70 | BTCUSDT | ChartForge RSI`; the ChartForge favicon is unchanged.

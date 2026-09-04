@@ -15,7 +15,7 @@ service cloud.firestore {
         && validVersion(data)
         && data.serverUpdatedAt is timestamp
         && data.values is map
-        && data.values.keys().hasOnly(["lastSymbol", "timeframe", "visibleBars", "pricePercent", "priceShift", "priceScale", "crossMode", "drawingDefaults"])
+        && validSettingsKeys(data.values)
         && (!("lastSymbol" in data.values) || validSettingEntry(data.values.lastSymbol))
         && (!("timeframe" in data.values) || validSettingEntry(data.values.timeframe))
         && (!("visibleBars" in data.values) || validSettingEntry(data.values.visibleBars))
@@ -33,6 +33,11 @@ service cloud.firestore {
         && (!("crossMode" in data.values) || data.values.crossMode.value is bool)
         && (!("drawingDefaults" in data.values) || validDrawingDefaults(data.values.drawingDefaults.value));
     }
+    function validSettingsKeys(values) {
+      // Viewport pan, Replay and Undo/Redo are deliberately local-only. Keeping
+      // this allowlist explicit also prevents old clients from reintroducing them.
+      return values.keys().hasOnly(["lastSymbol", "timeframe", "visibleBars", "pricePercent", "priceShift", "priceScale", "crossMode", "drawingDefaults"]);
+    }
     function validSettingEntry(entry) {
       return entry is map
         && entry.keys().hasOnly(["value", "revision", "updatedAt", "deviceId"])
@@ -49,8 +54,8 @@ service cloud.firestore {
     function validDrawingDefaults(defaults) {
       return defaults is map
         && defaults.keys().hasOnly(["trend", "text"])
-        && (!("trend" in defaults) || validStyle(defaults.trend))
-        && (!("text" in defaults) || validStyle(defaults.text));
+        && (!("trend" in defaults) || defaults.trend is map)
+        && (!("text" in defaults) || defaults.text is map);
     }
     function validPoint(point) {
       return point is map
