@@ -10,6 +10,22 @@
 - Extension metadata: `manifest.json`
 - Product documentation: `README.md`
 
+## PWA migration status
+
+- PWA parity version: `0.3.0`; source lives in `web/`. The extension remains unchanged at 3.10.15 as fallback.
+- Fixed symbol allowlist: `BTCUSDT`, `ETHUSDT`, `DOGEUSDT`.
+- Static app shell, web manifest, service worker, responsive/mobile UI and GitHub Pages workflow are present.
+- Working PWA market path: Binance public REST history, deduplicated WebSocket candles, older-history paging, every supported timeframe including locally aggregated `2W`, price candles, RSI/EMA/WMA and last-candle countdown.
+- Working local-first path: versioned IndexedDB stores for settings, drawings, sync queue, market cache and metadata. Symbol/timeframe/zoom restore locally; drawings are keyed by symbol. Replay remains RAM-only.
+- Versioned JSON export/import validates the complete payload before one atomic transaction and enqueues imported drawing IDs for future cloud sync.
+- PWA drawings include Fibonacci, Long Position, Price Range, Date Range, Trend Line on price/RSI panes and Text. Shared selection prioritizes anchors, supports anchor edit and whole-object drag, floating Trend/Text styles, deletion and session-only Undo/Redo; mobile has a visible Snap toggle while desktop Shift remains supported only for Trend anchors/drafts.
+- Bar Replay supports repeated Select Bar with selected-candle cutoff, cubic eased positioning, Select Date/first available, Play/Pause, Forward, speed, lazy future batches, timeframe switching around one replay timestamp and confirmed exit. Countdown and live stream updates are suppressed during replay; replay state remains RAM-only.
+- Firebase project `chartforge-rsi` is configured with public Web client metadata in `web/firebase-config.js`. Real Google Auth and per-UID Firestore sync are wired; no service-account credential exists in the repository.
+- Local mutations commit to IndexedDB first, enter an idempotent queue, and flush on authenticated/online state. Realtime listeners pull settings/drawing changes without echoing them into the queue. Transactions resolve conflicts by revision, timestamp and device ID; deletions remain tombstones.
+- Synced settings are `lastSymbol`, `timeframe`, `visibleBars`, `pricePercent` and Trend/Text `drawingDefaults`. Drawings sync under `users/{uid}/drawings/{id}`. Market cache, Replay and Undo/Redo remain device/session-only.
+- Firebase Google Sign-In, the Standard-edition Firestore database in `asia-southeast1`, and the authorized domains are configured. `web/firestore.rules` compiled successfully and was deployed to project `chartforge-rsi` on 2026-09-05; deploy only `firestore:rules` again when that file changes.
+- `.github/workflows/pages.yml` validates and deploys the `web/` artifact to `https://datnq55.github.io/chartforge-rsi/` from the `main` branch.
+
 ## Current architecture
 
 The extension injects a fixed Shadow DOM panel containing:

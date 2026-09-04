@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="ChartForge RSI — biểu đồ Binance Spot, RSI và Bar Replay.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <title>ChartForge RSI</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <img class="logo" src="./assets/icon.svg" alt="">
+      <label class="symbol-wrap"><span class="sr-only">Cặp giao dịch</span><select id="symbol"></select></label>
+      <span class="separator"></span>
+      <nav id="timeframes" class="timeframes" aria-label="Khung thời gian"></nav>
+      <span class="separator"></span>
+      <button id="replay" class="replay-button" type="button" aria-pressed="false">↞ <span>Replay</span></button>
+      <button id="auth-button" class="auth-button" type="button" title="Đăng nhập để đồng bộ"><img id="auth-avatar" alt="" hidden><span id="auth-label">Đăng nhập</span><i id="sync-dot"></i></button>
+      <span id="status" class="status loading"><i></i><b>ĐANG TẢI</b></span>
+    </header>
+
+    <main id="workspace">
+      <aside class="tools" aria-label="Công cụ vẽ">
+        <button data-tool="fib" title="Fibonacci Retracement">≋</button>
+        <button data-tool="long" title="Long Position">↥</button>
+        <button data-tool="trend" title="Trend Line">╱</button>
+        <button data-tool="dateRange" title="Date Range">↔</button>
+        <button data-tool="priceRange" title="Price Range">↕</button>
+        <button data-tool="text" title="Text">T</button>
+        <button id="snap" class="snap" title="Snap ngang/dọc" aria-pressed="false">⌁</button>
+        <button id="undo" title="Undo" disabled>↶</button>
+        <button id="redo" title="Redo" disabled>↷</button>
+        <button id="clear" class="clear" title="Xóa drawing">⌫</button>
+      </aside>
+      <section class="chart-stack">
+        <section id="price-pane" class="pane price-pane"><canvas id="price"></canvas><div id="ohlc" class="ohlc"></div></section>
+        <div class="splitter"></div>
+        <section id="rsi-pane" class="pane rsi-pane"><canvas id="rsi"></canvas><div class="rsi-name">RSI 14 · EMA 9 · WMA 45</div></section>
+      </section>
+    </main>
+
+    <footer class="bottom-bar">
+      <span id="countdown">Đóng nến sau --:--:--</span>
+      <span class="spacer"></span>
+      <button id="zoom-out" title="Thu nhỏ">−</button>
+      <output id="visible-bars">240</output>
+      <button id="zoom-in" title="Phóng to">＋</button>
+      <button id="reset" title="Reset chart">↻</button>
+      <button id="export" title="Xuất backup">⇩</button>
+      <button id="import-button" title="Nhập backup">⇧</button><input id="import-file" type="file" accept="application/json" hidden>
+    </footer>
+
+    <section id="replay-controls" class="replay-controls" hidden>
+      <button id="replay-play">▶</button><button id="replay-step">▷|</button>
+      <select id="replay-speed" aria-label="Tốc độ replay"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option selected value="1">1x</option><option value="2">2x</option><option value="5">5x</option><option value="10">10x</option></select>
+      <label>Ngày <input id="replay-date" type="datetime-local"></label>
+      <button id="replay-date-go">Chọn</button><button id="replay-first">Đầu tiên</button><span class="spacer"></span><button id="replay-exit">Về LIVE</button>
+    </section>
+    <section id="drawing-menu" class="drawing-menu" hidden>
+      <strong id="drawing-name">Drawing</strong>
+      <label class="color-setting">Màu <input id="drawing-color" type="color" value="#f23645"></label>
+      <label class="trend-setting">Nét <select id="drawing-width"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>6</option></select></label>
+      <label class="trend-setting">Kiểu <select id="drawing-dash"><option value="solid">Solid</option><option value="dash">Dash</option><option value="dot">Dot</option></select></label>
+      <label class="text-setting">Cỡ <select id="text-size"><option>12</option><option selected>14</option><option>18</option><option>24</option><option>32</option></select></label>
+      <button id="edit-text" class="text-setting">Sửa chữ</button>
+      <button id="delete-drawing" class="danger">Xóa</button>
+    </section>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

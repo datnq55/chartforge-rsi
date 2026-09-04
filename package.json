@@ -1,0 +1,11 @@
+{
+  "name": "chartforge-rsi",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "test:pwa": "node --test tests/pwa.test.mjs",
+    "validate:pwa": "node scripts/validate-pwa.mjs",
+    "test": "npm run validate:pwa && npm run test:pwa"
+  }
+}

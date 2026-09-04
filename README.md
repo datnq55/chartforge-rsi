@@ -1,5 +1,32 @@
 # ChartForge RSI
 
+## PWA 0.3.0
+
+Repo hiện có thêm một PWA tĩnh tại `web/`, chạy độc lập với trang Binance và không làm thay đổi extension 3.10.15 đang dùng làm bản dự phòng.
+
+- Cặp giao dịch cố định: `BTCUSDT`, `ETHUSDT`, `DOGEUSDT`; chọn bằng topbar hoặc query `?symbol=ETHUSDT`.
+- Dữ liệu lịch sử/realtime lấy trực tiếp từ Binance public REST/WebSocket, không cần API key.
+- Có toàn bộ timeframe hiện hành, nến giá, RSI 14, EMA 9, WMA 45, tải lịch sử cũ, pan, wheel/pinch zoom và crosshair.
+- Có Fibonacci, Long Position, Trend Line, Date Range, Price Range, Text; selection, anchor edit, whole-object drag, style, delete và Undo/Redo. Nút Snap thay Shift trên cảm ứng.
+- Bar Replay có Select Bar lặp lại, Select Date/ngày đầu tiên, animation, Play/Forward/speed, tải tiếp nến tương lai, đổi timeframe giữ timestamp và xác nhận thoát.
+- Settings, symbol gần nhất, drawing và cache thị trường lưu local-first bằng IndexedDB. Replay chỉ ở RAM.
+- Backup JSON có thể export/import; import được validate trước một transaction nguyên tử và lặp lại theo drawing ID.
+- App shell hoạt động offline sau lần tải đầu; dữ liệu nến gần nhất đã cache được dùng khi Binance không truy cập được.
+- Firebase Web config thật đã được nối với Google Authentication và Firestore. App vẫn local-first khi chưa đăng nhập; sau khi đăng nhập, settings và drawings đồng bộ hai chiều theo tài khoản Google.
+- Cloud sync gồm: symbol gần nhất, timeframe, số nến hiển thị, tỷ lệ chiều cao price/RSI, mặc định style Trend/Text và toàn bộ drawing/tombstone theo symbol. Market cache, Replay và Undo/Redo không bao giờ được upload.
+- Firestore writes dùng transaction và quy tắc xung đột xác định theo `revision → updatedAt → deviceId`; chỉnh sửa offline nằm trong IndexedDB queue và tự flush khi có mạng.
+- `web/firestore.rules` khóa dữ liệu theo UID và validate symbol/type/field. Rules đã biên dịch và deploy vào project `chartforge-rsi`; workflow Pages không tự động thay đổi rules.
+- Bản public được phát hành tự động bằng GitHub Pages tại `https://datnq55.github.io/chartforge-rsi/`; mỗi thay đổi PWA trên nhánh `main` phải vượt qua validator và test trước khi deploy.
+
+Chạy local:
+
+```bash
+npm test
+npx --yes http-server web -p 4173 -c-1
+```
+
+Sau đó mở `http://localhost:4173/?symbol=BTCUSDT`. Service Worker chỉ có đầy đủ hành vi trên HTTPS hoặc localhost.
+
 ChartForge RSI 3.10.15 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
 
 ## Công thức

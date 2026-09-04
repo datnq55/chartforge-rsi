@@ -1,0 +1,6 @@
+import{mergeRows}from"./math.js";
+const REST="https://data-api.binance.vision/api/v3/klines";
+export function mapKlines(data){return(data||[]).map(k=>({time:+k[0],open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5],closeTime:+k[6]})).filter(x=>Number.isFinite(x.time)&&Number.isFinite(x.close))}
+export async function fetchKlines(symbol,tf,params={},signal){const query=new URLSearchParams({symbol,interval:tf.interval,limit:"1000",...params});const res=await fetch(`${REST}?${query}`,{signal});if(!res.ok)throw new Error(`Binance HTTP ${res.status}`);return mapKlines(await res.json())}
+export function marketStream(symbol,tf,onRow,onState){let ws,closed=false,retry=1000,timer;const connect=()=>{if(closed)return;onState?.("connecting");ws=new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${tf.interval}`);ws.onopen=()=>{retry=1000;onState?.("live")};ws.onmessage=e=>{const k=JSON.parse(e.data)?.k;if(!k)return;onRow({time:+k.t,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v,closeTime:+k.T})};ws.onerror=()=>ws.close();ws.onclose=()=>{if(closed)return;onState?.("offline");timer=setTimeout(connect,retry);retry=Math.min(30000,retry*2)}};connect();return()=>{closed=true;clearTimeout(timer);if(ws){ws.onclose=null;ws.close()}}}
+export{mergeRows};

@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function validVersion(data) {
+      return data.revision is int && data.revision >= 0
+        && data.updatedAt is int && data.updatedAt > 0
+        && data.deviceId is string && data.deviceId.size() >= 8 && data.deviceId.size() <= 100;
+    }
+    function validSettings(data) {
+      return data.keys().hasOnly(["values", "revision", "updatedAt", "deviceId", "serverUpdatedAt"])
+        && data.keys().hasAll(["values", "revision", "updatedAt", "deviceId", "serverUpdatedAt"])
+        && validVersion(data)
+        && data.serverUpdatedAt is timestamp
+        && data.values is map
+        && data.values.keys().hasOnly(["lastSymbol", "timeframe", "visibleBars", "pricePercent", "drawingDefaults"])
+        && (!("lastSymbol" in data.values) || validSettingEntry(data.values.lastSymbol))
+        && (!("timeframe" in data.values) || validSettingEntry(data.values.timeframe))
+        && (!("visibleBars" in data.values) || validSettingEntry(data.values.visibleBars))
+        && (!("pricePercent" in data.values) || validSettingEntry(data.values.pricePercent))
+        && (!("drawingDefaults" in data.values) || validSettingEntry(data.values.drawingDefaults))
+        && (!("lastSymbol" in data.values) || data.values.lastSymbol.value in ["BTCUSDT", "ETHUSDT", "DOGEUSDT"])
+        && (!("timeframe" in data.values) || data.values.timeframe.value in ["30m", "H1", "H2", "H4", "H8", "H12", "D", "3D", "1W", "2W", "M"])
+        && (!("visibleBars" in data.values) || (data.values.visibleBars.value is number && data.values.visibleBars.value >= 20 && data.values.visibleBars.value <= 1000))
+        && (!("pricePercent" in data.values) || (data.values.pricePercent.value is number && data.values.pricePercent.value >= 35 && data.values.pricePercent.value <= 80))
+        && (!("drawingDefaults" in data.values) || validDrawingDefaults(data.values.drawingDefaults.value));
+    }
+    function validSettingEntry(entry) {
+      return entry is map
+        && entry.keys().hasOnly(["value", "revision", "updatedAt", "deviceId"])
+        && validVersion(entry);
+    }
+    function validStyle(style) {
+      return style is map
+        && style.keys().hasOnly(["color", "lineWidth", "dash", "fontSize"])
+        && (!("color" in style) || (style.color is string && style.color.size() <= 20))
+        && (!("lineWidth" in style) || (style.lineWidth is number && style.lineWidth >= 1 && style.lineWidth <= 6))
+        && (!("dash" in style) || style.dash in ["solid", "dash", "dot"])
+        && (!("fontSize" in style) || (style.fontSize is number && style.fontSize >= 8 && style.fontSize <= 64));
+    }
+    function validDrawingDefaults(defaults) {
+      return defaults is map
+        && defaults.keys().hasOnly(["trend", "text"])
+        && (!("trend" in defaults) || validStyle(defaults.trend))
+        && (!("text" in defaults) || validStyle(defaults.text));
+    }
+    function validPoint(point) {
+      return point is map
+        && point.keys().hasOnly(["time", "price"])
+        && point.time is number && point.price is number;
+    }
+    function validDrawing(data, drawingId) {
+      return data.keys().hasOnly(["id", "symbol", "type", "pane", "a", "b", "c", "style", "text", "revision", "updatedAt", "serverUpdatedAt", "deviceId", "deleted", "contentHash"])
+        && data.keys().hasAll(["id", "symbol", "type", "pane", "a", "b", "c", "style", "text", "revision", "updatedAt", "serverUpdatedAt", "deviceId", "deleted", "contentHash"])
+        && data.id == drawingId
+        && data.id is string && data.id.size() >= 8 && data.id.size() <= 100
+        && data.symbol in ["BTCUSDT", "ETHUSDT", "DOGEUSDT"]
+        && data.type in ["fib", "long", "priceRange", "dateRange", "trend", "text"]
+        && data.pane in ["price", "rsi"]
+        && validPoint(data.a)
+        && (data.b == null || validPoint(data.b))
+        && (data.c == null || validPoint(data.c))
+        && validStyle(data.style)
+        && data.text is string && data.text.size() <= 2000
+        && data.deleted is bool
+        && data.contentHash is string && data.contentHash.size() <= 128
+        && data.serverUpdatedAt is timestamp
+        && validVersion(data);
+    }
+    match /users/{uid}/settings/current {
+      allow read: if owns(uid);
+      allow create, update: if owns(uid) && validSettings(request.resource.data);
+      allow delete: if false;
+    }
+    match /users/{uid}/drawings/{drawingId} {
+      allow read: if owns(uid);
+      allow create, update: if owns(uid) && validDrawing(request.resource.data, drawingId);
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

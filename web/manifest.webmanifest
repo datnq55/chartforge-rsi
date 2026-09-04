@@ -1,0 +1,16 @@
+{
+  "id": "/chartforge-rsi/",
+  "name": "ChartForge RSI",
+  "short_name": "ChartForge",
+  "description": "Biểu đồ Binance Spot, RSI, drawing và Bar Replay.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {"src":"./assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
