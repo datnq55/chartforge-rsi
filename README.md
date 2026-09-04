@@ -1,13 +1,13 @@
 # ChartForge RSI
 
-## PWA 0.3.0
+## PWA 0.4.1
 
-Repo hiện có thêm một PWA tĩnh tại `web/`, chạy độc lập với trang Binance và không làm thay đổi extension 3.10.15 đang dùng làm bản dự phòng.
+Repo hiện có thêm một PWA tĩnh tại `web/`, chạy độc lập với trang Binance và không làm thay đổi extension 3.10.15 đang dùng làm bản chuẩn/dự phòng. PWA 0.4.1 không còn dùng renderer viết lại: `web/js/canonical-content.js` được tạo tự động, nguyên vẹn từ `content.js`, nên dùng cùng DOM, Canvas renderer, SVG, màu sắc, drawing và Bar Replay của extension.
 
 - Cặp giao dịch cố định: `BTCUSDT`, `ETHUSDT`, `DOGEUSDT`; chọn bằng topbar hoặc query `?symbol=ETHUSDT`.
 - Dữ liệu lịch sử/realtime lấy trực tiếp từ Binance public REST/WebSocket, không cần API key.
 - Có toàn bộ timeframe hiện hành, nến giá, RSI 14, EMA 9, WMA 45, tải lịch sử cũ, pan, wheel/pinch zoom và crosshair.
-- Có Fibonacci, Long Position, Trend Line, Date Range, Price Range, Text; selection, anchor edit, whole-object drag, style, delete và Undo/Redo. Nút Snap thay Shift trên cảm ứng.
+- Có Fibonacci, Long Position, Trend Line, Date Range, Price Range, Text; selection, anchor edit, whole-object drag, style, delete và Undo/Redo. Desktop giữ Shift-snap nguyên bản; mobile dùng thao tác cảm ứng tự do, không giả lập phím Shift.
 - Bar Replay có Select Bar lặp lại, Select Date/ngày đầu tiên, animation, Play/Forward/speed, tải tiếp nến tương lai, đổi timeframe giữ timestamp và xác nhận thoát.
 - Settings, symbol gần nhất, drawing và cache thị trường lưu local-first bằng IndexedDB. Replay chỉ ở RAM.
 - Backup JSON có thể export/import; import được validate trước một transaction nguyên tử và lặp lại theo drawing ID.
@@ -15,8 +15,10 @@ Repo hiện có thêm một PWA tĩnh tại `web/`, chạy độc lập với tr
 - Firebase Web config thật đã được nối với Google Authentication và Firestore. App vẫn local-first khi chưa đăng nhập; sau khi đăng nhập, settings và drawings đồng bộ hai chiều theo tài khoản Google.
 - Cloud sync gồm: symbol gần nhất, timeframe, số nến hiển thị, tỷ lệ chiều cao price/RSI, mặc định style Trend/Text và toàn bộ drawing/tombstone theo symbol. Market cache, Replay và Undo/Redo không bao giờ được upload.
 - Firestore writes dùng transaction và quy tắc xung đột xác định theo `revision → updatedAt → deviceId`; chỉnh sửa offline nằm trong IndexedDB queue và tự flush khi có mạng.
-- `web/firestore.rules` khóa dữ liệu theo UID và validate symbol/type/field. Rules đã biên dịch và deploy vào project `chartforge-rsi`; workflow Pages không tự động thay đổi rules.
+- `web/firestore.rules` khóa dữ liệu theo UID và validate symbol/type/field. Rules PWA 0.4.1 đã được compile và deploy vào project `chartforge-rsi`; workflow Pages không tự động thay đổi rules.
 - Bản public được phát hành tự động bằng GitHub Pages tại `https://datnq55.github.io/chartforge-rsi/`; mỗi thay đổi PWA trên nhánh `main` phải vượt qua validator và test trước khi deploy.
+- Chạy `npm run build:pwa` sau khi đổi `content.js`; test sẽ xác nhận file canonical sinh ra giống chính xác source extension. Chỉ symbol selector, Google/Firebase, IndexedDB, full-page/mobile và pinch là adapter riêng của PWA.
+- PWA 0.4.1 sửa lưu Fibonacci, tuần tự hóa IndexedDB write, giữ ổn định drawing ID khi chỉnh/xóa đồng thời và cô lập lỗi từng mutation cloud. Đồng bộ thêm `priceShift`, `priceScale`, `crossMode`; đổi symbol có hiệu lực ngay và pinch không còn giữ lại gesture pan một ngón.
 
 Chạy local:
 

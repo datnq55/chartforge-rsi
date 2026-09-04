@@ -15,16 +15,22 @@ service cloud.firestore {
         && validVersion(data)
         && data.serverUpdatedAt is timestamp
         && data.values is map
-        && data.values.keys().hasOnly(["lastSymbol", "timeframe", "visibleBars", "pricePercent", "drawingDefaults"])
+        && data.values.keys().hasOnly(["lastSymbol", "timeframe", "visibleBars", "pricePercent", "priceShift", "priceScale", "crossMode", "drawingDefaults"])
         && (!("lastSymbol" in data.values) || validSettingEntry(data.values.lastSymbol))
         && (!("timeframe" in data.values) || validSettingEntry(data.values.timeframe))
         && (!("visibleBars" in data.values) || validSettingEntry(data.values.visibleBars))
         && (!("pricePercent" in data.values) || validSettingEntry(data.values.pricePercent))
+        && (!("priceShift" in data.values) || validSettingEntry(data.values.priceShift))
+        && (!("priceScale" in data.values) || validSettingEntry(data.values.priceScale))
+        && (!("crossMode" in data.values) || validSettingEntry(data.values.crossMode))
         && (!("drawingDefaults" in data.values) || validSettingEntry(data.values.drawingDefaults))
         && (!("lastSymbol" in data.values) || data.values.lastSymbol.value in ["BTCUSDT", "ETHUSDT", "DOGEUSDT"])
         && (!("timeframe" in data.values) || data.values.timeframe.value in ["30m", "H1", "H2", "H4", "H8", "H12", "D", "3D", "1W", "2W", "M"])
         && (!("visibleBars" in data.values) || (data.values.visibleBars.value is number && data.values.visibleBars.value >= 20 && data.values.visibleBars.value <= 1000))
-        && (!("pricePercent" in data.values) || (data.values.pricePercent.value is number && data.values.pricePercent.value >= 35 && data.values.pricePercent.value <= 80))
+        && (!("pricePercent" in data.values) || (data.values.pricePercent.value is number && data.values.pricePercent.value >= 20 && data.values.pricePercent.value <= 80))
+        && (!("priceShift" in data.values) || data.values.priceShift.value is number)
+        && (!("priceScale" in data.values) || (data.values.priceScale.value is number && data.values.priceScale.value >= 0.15 && data.values.priceScale.value <= 20))
+        && (!("crossMode" in data.values) || data.values.crossMode.value is bool)
         && (!("drawingDefaults" in data.values) || validDrawingDefaults(data.values.drawingDefaults.value));
     }
     function validSettingEntry(entry) {
@@ -36,7 +42,7 @@ service cloud.firestore {
       return style is map
         && style.keys().hasOnly(["color", "lineWidth", "dash", "fontSize"])
         && (!("color" in style) || (style.color is string && style.color.size() <= 20))
-        && (!("lineWidth" in style) || (style.lineWidth is number && style.lineWidth >= 1 && style.lineWidth <= 6))
+        && (!("lineWidth" in style) || (style.lineWidth is number && style.lineWidth >= 1 && style.lineWidth <= 8))
         && (!("dash" in style) || style.dash in ["solid", "dash", "dot"])
         && (!("fontSize" in style) || (style.fontSize is number && style.fontSize >= 8 && style.fontSize <= 64));
     }
@@ -63,7 +69,7 @@ service cloud.firestore {
         && (data.b == null || validPoint(data.b))
         && (data.c == null || validPoint(data.c))
         && validStyle(data.style)
-        && data.text is string && data.text.size() <= 2000
+        && data.text is string
         && data.deleted is bool
         && data.contentHash is string && data.contentHash.size() <= 128
         && data.serverUpdatedAt is timestamp

@@ -27,3 +27,20 @@ test("Sync coalesces queue and two devices converge through offline edits and to
   a.local("drawing",{...a.rows.get("drawing:drawing-1"),revision:2,updatedAt:4,deleted:true});ea.poke();await new Promise(r=>setTimeout(r,10));assert.equal(b.rows.get("drawing:drawing-1").deleted,true);
   assert.equal(newestByEntity([{kind:"drawing",payload:{id:"x",revision:1}},{kind:"drawing",payload:{id:"x",revision:2}}],(x,y)=>x.revision-y.revision)[0].payload.revision,2);ea.stop();eb.stop()
 });
+
+test("one rejected cloud mutation does not block later entities",async()=>{
+  const queue=[
+    {id:"bad-q",kind:"setting",payload:{id:"bad",revision:1,updatedAt:1,deviceId:"device-a"}},
+    {id:"good-q",kind:"setting",payload:{id:"timeframe",value:"H4",revision:1,updatedAt:2,deviceId:"device-a"}}
+  ],written=[],acked=[],failed=[];
+  const engine=createSyncEngine({
+    repository:{queue:async()=>structuredClone(queue.filter(item=>!acked.includes(item.id))),ack:async ids=>acked.push(...ids),fail:async(id)=>failed.push(id),enqueueSnapshot:async()=>{},applyRemote:async()=>false},
+    remote:{online:()=>true,write:async(uid,kind,row)=>{written.push(row.id);if(row.id==="bad")throw new Error("rejected");return{winner:row}},subscribe:()=>[]},
+    compare:(a,b)=>a.revision-b.revision
+  });
+  await engine.start({uid:"user"});
+  assert.deepEqual(written,["bad","timeframe"]);
+  assert.deepEqual(acked,["good-q"]);
+  assert.deepEqual(failed,["bad-q"]);
+  engine.stop();
+});
