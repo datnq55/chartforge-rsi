@@ -2,7 +2,7 @@
 
 ## Current release
 
-- Version: `3.10.8`
+- Version: `3.10.14`
 - Platform: Chrome Extension, Manifest V3
 - Target page: Binance Spot trade pages
 - Main implementation: `content.js`
@@ -226,6 +226,44 @@ All tools support selection, dragging, editable anchors, deletion, Undo/Redo, an
 - Date Range elapsed time now uses the anchors' absolute timestamp difference and decomposes it into days, hours, and minutes; `D` is the largest unit, so week-length spans remain expressed as total days.
 - Zero components are omitted while minute precision is retained (for example `9D`, `1D 1h`, and `8D 9h 30m`); reversed anchors produce the same positive duration and a zero-length range displays `0m`.
 - Bar count and summed Binance volume labels are unchanged. The manifest public key and drawing sync schema are unchanged.
+
+## Version 3.10.9 changes
+
+- While a Trend Line draft is active, pressing Shift immediately snaps endpoint B horizontally or vertically without requiring another pointer move; releasing Shift immediately restores B to the latest raw pointer position. This works for two-click and drag creation in both price and RSI panes without changing anchor A.
+- Trend Line drafts now capture and render the active default color, line width, and Solid/Dash/Dot style from their first segment. The completed drawing saves that same captured style, so its appearance does not change at creation time.
+- The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.10 changes
+
+- The price-pane OHLC/change legend now falls back to the final row in the current data set whenever no valid price candle is hovered, including mouseleave, future whitespace, the price gutter, and other out-of-range pointer positions. A valid price-candle hover still takes precedence.
+- Because the fallback is resolved on every render, live websocket updates use the latest candle and Bar Replay uses the latest revealed candle without persisting any hover or replay state.
+- The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.11 changes
+
+- Dragging either endpoint of an existing Trend Line now uses the same nearest-axis Shift lock as creation: Shift snaps the moving endpoint horizontally or vertically around the stationary endpoint in both price and RSI panes.
+- Shift keydown applies the snap immediately without another pointer move, and keyup restores the moving endpoint to the latest raw pointer position. Whole-line dragging and all other drawing anchor editors remain unchanged.
+- One anchor-edit gesture still produces one Undo step and one persistence write on completion. The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.12 changes
+
+- Existing Trend Line endpoint edits now use one shared active-edit session and a capture-phase global Shift state, so pressing or releasing Shift while the pointer remains held on node A or B updates the node immediately even when page-level Binance handlers or focus would prevent a bubble-phase keyboard listener from running.
+- Pointer moves consult the shared modifier state as well as the event modifier, while whole-line drags remain unsnapped. A completed endpoint edit still records one Undo step and performs one drawing persistence write on pointer release.
+- The behavior is shared by saved Trend Lines in both price and RSI panes. The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.13 changes
+
+- Existing drawing endpoints now receive a dedicated first-pass hit test before line bodies or rectangular drawing bounds. This fixes the saved Trend Line failure where an endpoint press could be classified as a whole-line drag, a mode that intentionally ignores Shift snapping.
+- A saved Trend Line endpoint edit keeps one stable edit-session identity and combines the capture-phase Shift state with each PointerEvent's modifier state without allowing a later `shiftKey: false` pointer move to clear an active keydown. Both Shift-before-drag and Shift-during-drag work for A/B in price and RSI panes, while whole-line drag remains unsnapped and one gesture remains one Undo step.
+- The topbar now displays the packaged ChartForge icon before the identity, with thin separators immediately before and after `RSI · <symbol>`. Timeframes, their existing Replay separator, Replay, and the right-aligned status retain their prior order.
+- The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.14 changes
+
+- Removed the separator between the packaged ChartForge logo and `RSI · <symbol>` so the brand and identity form one compact left-side unit.
+- The two remaining topbar group separators now share exactly the same element class, dimensions, and symmetric horizontal margins: one sits between identity and timeframes, and one between timeframes and Replay. Replay remains directly after its separator and only status is pushed to the far right; the timeframe group's narrow-panel scrolling behavior is unchanged.
+- Reset now restores a wider 240-visible-bar time view with `panBars = 0` and synchronizes the hidden zoom input/output to that exact preset. Time-scale drag/wheel sensitivity, the 1,000-bar maximum, and persisted zoom outside an explicit Reset are unchanged.
+- The manifest public key and drawing sync shard schema are unchanged.
 
 ## Important invariants
 

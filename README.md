@@ -1,6 +1,6 @@
 # ChartForge RSI
 
-ChartForge RSI 3.10.7 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
+ChartForge RSI 3.10.14 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
 
 ## Công thức
 
@@ -34,7 +34,7 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - Nến tăng: thân trắng, viền và râu đen. Nến giảm: thân, viền và râu đen.
 - Kéo phần trục thời gian sang trái/phải để zoom; rê vào trục sẽ có con trỏ hai chiều.
 - Kéo chart sang trái để tạo khoảng trắng bên phải mà không sinh nến tương lai.
-- Nút **Reset** đưa zoom, vị trí ngang, vị trí dọc và tỷ lệ hai pane về mặc định.
+- Nút **Reset** đưa chart về 240 nến hiển thị, `panBars = 0`, vị trí dọc và tỷ lệ hai pane mặc định; độ nhạy kéo/zoom time scale không thay đổi.
 - Nút `✛` bật chế độ kéo chart giá lên/xuống.
 - Kéo nút `↕` giữa chart và RSI để thay đổi chiều cao hai pane.
 - Dữ liệu realtime được dedupe theo `openTime`; tick chỉ cập nhật nến hiện tại và chỉ thêm khi xuất hiện một openTime mới hợp lệ.
@@ -42,7 +42,7 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - Khi bật `✛`, một lần kéo có thể pan chart đồng thời theo cả chiều ngang và chiều dọc.
 - Rê vào price scale bên phải có cursor dọc; khi nhấn-kéo, mức giá ngay dưới vị trí nhấn được giữ cố định trên màn hình và các mức giá khác phóng to hoặc thu nhỏ xung quanh điểm neo đó, giống TradingView.
 - Kéo price scale và time scale có độ nhạy chậm, dễ kiểm soát hơn. Price scale dùng hệ số `0.003` mỗi pixel, snapshot lúc pointer-down và độ dịch chuyển tuyệt đối nên không bị nhảy ở lần di chuyển đầu hoặc tích lũy sai số; time scale vẫn giữ bar dưới con trỏ làm anchor và giữ nguyên độ nhạy.
-- Topbar giữ `RSI · <symbol>` sát mép trái, tiếp theo là các timeframe, separator và Replay; chỉ trạng thái nằm sát phải. Chấm trạng thái màu xanh biểu thị LIVE, vàng biểu thị đang tải/kết nối và đỏ biểu thị replay, lỗi hoặc mất kết nối.
+- Topbar đặt logo ChartForge sát mép trái và liền với `RSI · <symbol>` mà không có separator ở giữa. Hai separator còn lại dùng cùng chiều cao và khoảng trắng đối xứng: một separator phân cách identity với nhóm timeframe, separator kia phân cách nhóm timeframe với Replay; chỉ trạng thái nằm sát phải. Chấm trạng thái màu xanh biểu thị LIVE, vàng biểu thị đang tải/kết nối và đỏ biểu thị replay, lỗi hoặc mất kết nối.
 - Chrome Storage được truy cập qua lớp bảo vệ context và mọi tác vụ bất đồng bộ chạy nền đều có điểm xử lý lỗi cuối: tab Binance cũ còn tồn tại sau khi reload extension sẽ không phát sinh unhandled promise rejection `Extension context invalidated`. Tab đang chạy content script từ bản cũ vẫn cần refresh một lần để nạp bản sửa mới.
 - Tên `RSI · <symbol>` nằm bên trái topbar, trước các khung thời gian; trạng thái `LIVE`, tải dữ liệu, lỗi hoặc replay nằm sát phía phải topbar.
 - Góc trái bottom toolbar hiển thị thời gian còn lại đến lúc đóng nến hiện tại và cập nhật mỗi giây. Mốc đóng nến theo đúng interval Binance, gồm biên 2 tuần và tháng lịch; đồng hồ được ẩn hoàn toàn trong Bar Replay.
@@ -50,7 +50,7 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - Tick H4 bám biên ngày/tháng và tự chọn bước 1/2/3/5… ngày theo độ rộng viewport.
 - Các tick thời gian có grid dọc mờ chạy xuyên cả chart giá và RSI.
 - Hover pane giá có crosshair dọc và ngang; đường ngang kết thúc bằng nhãn giá trên price scale.
-- Hover vào một cây nến sẽ hiện O/H/L/C, mức thay đổi và phần trăm thay đổi ở góc trên bên trái của chart giá; màu xanh cho nến tăng và đỏ cho nến giảm.
+- Hover vào một cây nến sẽ hiện O/H/L/C, mức thay đổi và phần trăm thay đổi ở góc trên bên trái của chart giá; màu xanh cho nến tăng và đỏ cho nến giảm. Khi con trỏ không nằm trên một cây nến hợp lệ, hàng này tự hiển thị dữ liệu của cây nến cuối cùng (cây mới nhất trong Live hoặc cây cuối đã mở trong Replay).
 - Dialog có viền hiển thị rõ và tám vùng resize ở bốn cạnh/bốn góc; kích thước và vị trí mới được ghi nhớ.
 - Nút `↕` không nhận focus bàn phím, không hiện caret và không cho chọn ký tự khi nhấn hoặc kéo.
 - Toolbar dọc bên trái có công cụ **Fibonacci Retracement**. Chọn `F↗`, đặt điểm đầu rồi đặt điểm cuối; cũng có thể nhấn-kéo-thả để hoàn thành nhanh.
@@ -63,7 +63,7 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - **Long Position (`L▥`)**: đặt entry và target; hiển thị vùng target xanh, vùng stop đỏ, phần trăm và tỷ lệ risk/reward. Stop mặc định đối xứng với khoảng target.
 - **Price Range (`↕$`)**: đo chênh lệch giá và phần trăm giữa hai điểm, với vùng đo xanh và nhãn kết quả.
 - **Date Range**: đo số bar, thời lượng và tổng volume giữa hai mốc thời gian. Thời lượng lấy từ chênh lệch timestamp thực tế, dùng `D` làm đơn vị lớn nhất rồi tới `h` và `m` (ví dụ `9D`, `1D 1h`, `8D 9h 30m`), không quy đổi sang tuần. Vùng cam và mũi tên xanh mô phỏng TradingView; khi chọn, hai mốc ngày/giờ màu xanh xuất hiện trên time scale. Khi kéo cả vùng hoặc chỉnh anchor, đường dash dọc dưới con trỏ và nhãn thời gian cập nhật ngay trong lúc kéo. Icon dùng đúng bố cục một mũi tên sang phải, hai đường mốc bất đối xứng và hai điểm neo của mẫu TradingView.
-- **Trend Line (`╱`)**: vẽ đường đỏ 4px giữa hai điểm. Giữ `Shift` trong lúc đặt điểm cuối để khóa thành đường ngang hoặc đường dọc theo hướng gần nhất. Khi chọn Trend Line trên price pane, giá của hai đầu mút được hiển thị bằng nhãn cùng màu trên price scale nhưng không vẽ đường gióng ngang; Trend Line trên RSI pane không hiện nhãn giá này.
+- **Trend Line (`╱`)**: vẽ đường giữa hai điểm bằng đúng preset màu, độ dày và kiểu Solid/Dash/Dot hiện tại ngay từ lúc preview. Sau khi đường đã được tạo xong, node A/B luôn được ưu tiên khi nhấn gần đầu mút: có thể giữ `Shift` trước khi kéo hoặc nhấn `Shift` trong lúc đang kéo để khóa node ngang/dọc theo node còn lại; thả `Shift` trong khi vẫn giữ chuột để node trở lại đúng vị trí con trỏ. Khi chọn Trend Line trên price pane, giá của hai đầu mút được hiển thị bằng nhãn cùng màu trên price scale nhưng không vẽ đường gióng ngang; Trend Line trên RSI pane không hiện nhãn giá này.
 - Ba tool mới dùng chung cơ chế preview, hai-click hoặc kéo-thả, chọn hình, menu nổi và xóa như Fibo.
 - Drawing được lưu đầy đủ trong `chrome.storage.local` và đồng bộ theo từng shard qua `chrome.storage.sync`.
 - Kéo trực tiếp drawing để di chuyển toàn bộ đối tượng; kéo các điểm neo màu xanh để sửa từng đầu mút. Long Position có điểm neo riêng cho Entry, Target và Stop.

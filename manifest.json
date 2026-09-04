@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChartForge RSI",
-  "version": "3.10.8",
+  "version": "3.10.14",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXRwFq9BCCjd4Xdauc5XcujF4VnGSYzyPpEjfwDUnR2CW6MaPAi1YDC2aXzOc8q7HPwhf4zzHNva8U9Z2VWbDg9rtjcagGKwTnWJLK441ZqZqBEa2ifwRrfwLqUd5v0P30HoliWYAMTDgLBnKnZV6FPCOIew822QmVF/UBJhuAe5tMdf6p1s+Pl6NzGx71rhLiovormX/YWzYDzyif/Nq8CxzaaH/h7qKaUb0JKZeLGCzS5isdz2HdFM77abyxKB/ECTgCygZqH3fb15PNQ/C18bYYRmC3TEfcxakr4AODjPt9XKYiOMebALRyFWmIEp/9Dy2Kh3VvvwdIZL3CTHZQIDAQAB",
   "description": "Chart nến, RSI và bộ công cụ vẽ kỹ thuật cho Binance Spot.",
   "permissions": ["storage", "activeTab"],
