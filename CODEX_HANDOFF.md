@@ -2,7 +2,7 @@
 
 ## Current release
 
-- Version: `3.10.14`
+- Version: `3.10.15`
 - Platform: Chrome Extension, Manifest V3
 - Target page: Binance Spot trade pages
 - Main implementation: `content.js`
@@ -264,6 +264,12 @@ All tools support selection, dragging, editable anchors, deletion, Undo/Redo, an
 - The two remaining topbar group separators now share exactly the same element class, dimensions, and symmetric horizontal margins: one sits between identity and timeframes, and one between timeframes and Replay. Replay remains directly after its separator and only status is pushed to the far right; the timeframe group's narrow-panel scrolling behavior is unchanged.
 - Reset now restores a wider 240-visible-bar time view with `panBars = 0` and synchronizes the hidden zoom input/output to that exact preset. Time-scale drag/wheel sensitivity, the 1,000-bar maximum, and persisted zoom outside an explicit Reset are unchanged.
 - The manifest public key and drawing sync shard schema are unchanged.
+
+## Version 3.10.15 changes
+
+- Bottom time-scale dragging now freezes both its pointer-down bar and pointer-down screen ratio for the entire gesture. The previous implementation recalculated the ratio from the moving pointer, unintentionally adding horizontal chart translation on top of the requested zoom.
+- Time-scale zoom still uses the pointer-down viewport snapshot and absolute drag delta at 5 pixels per visible bar, with the selected anchor bar preserved within rounding tolerance. Regular chart-body dragging remains pan-only and the 20–1,000 visible-bar limits are unchanged.
+- Added a local, git-ignored PWA-only migration plan under `.codex-logs`, while tracking the ignore rule itself. The manifest public key, drawing sync shard schema, and session-only Replay/Undo state are unchanged.
 
 ## Important invariants
 

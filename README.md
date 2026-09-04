@@ -1,6 +1,6 @@
 # ChartForge RSI
 
-ChartForge RSI 3.10.14 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
+ChartForge RSI 3.10.15 vẽ chart nến Binance, RSI và các công cụ phân tích trong cùng dialog. Hai pane dùng chung time scale nên luôn hiển thị đúng cùng tập nến khi kéo hoặc zoom.
 
 ## Công thức
 
@@ -38,10 +38,10 @@ Rê chuột trên đồ thị để hiện crosshair dọc bám vào bar gần n
 - Nút `✛` bật chế độ kéo chart giá lên/xuống.
 - Kéo nút `↕` giữa chart và RSI để thay đổi chiều cao hai pane.
 - Dữ liệu realtime được dedupe theo `openTime`; tick chỉ cập nhật nến hiện tại và chỉ thêm khi xuất hiện một openTime mới hợp lệ.
-- Zoom bằng trục thời gian giữ bar neo đi theo vị trí con trỏ hiện tại trong suốt thao tác kéo.
+- Zoom bằng trục thời gian giữ bar neo cố định tại vị trí pointer-down trong suốt thao tác kéo.
 - Khi bật `✛`, một lần kéo có thể pan chart đồng thời theo cả chiều ngang và chiều dọc.
 - Rê vào price scale bên phải có cursor dọc; khi nhấn-kéo, mức giá ngay dưới vị trí nhấn được giữ cố định trên màn hình và các mức giá khác phóng to hoặc thu nhỏ xung quanh điểm neo đó, giống TradingView.
-- Kéo price scale và time scale có độ nhạy chậm, dễ kiểm soát hơn. Price scale dùng hệ số `0.003` mỗi pixel, snapshot lúc pointer-down và độ dịch chuyển tuyệt đối nên không bị nhảy ở lần di chuyển đầu hoặc tích lũy sai số; time scale vẫn giữ bar dưới con trỏ làm anchor và giữ nguyên độ nhạy.
+- Kéo price scale và time scale có độ nhạy chậm, dễ kiểm soát hơn. Price scale dùng hệ số `0.003` mỗi pixel, snapshot lúc pointer-down và độ dịch chuyển tuyệt đối nên không bị nhảy ở lần di chuyển đầu hoặc tích lũy sai số; time scale cố định cả bar lẫn vị trí màn hình tại điểm pointer-down trong suốt gesture, vì vậy chỉ zoom theo độ nhạy 5px/bar mà không bị cộng thêm horizontal pan.
 - Topbar đặt logo ChartForge sát mép trái và liền với `RSI · <symbol>` mà không có separator ở giữa. Hai separator còn lại dùng cùng chiều cao và khoảng trắng đối xứng: một separator phân cách identity với nhóm timeframe, separator kia phân cách nhóm timeframe với Replay; chỉ trạng thái nằm sát phải. Chấm trạng thái màu xanh biểu thị LIVE, vàng biểu thị đang tải/kết nối và đỏ biểu thị replay, lỗi hoặc mất kết nối.
 - Chrome Storage được truy cập qua lớp bảo vệ context và mọi tác vụ bất đồng bộ chạy nền đều có điểm xử lý lỗi cuối: tab Binance cũ còn tồn tại sau khi reload extension sẽ không phát sinh unhandled promise rejection `Extension context invalidated`. Tab đang chạy content script từ bản cũ vẫn cần refresh một lần để nạp bản sửa mới.
 - Tên `RSI · <symbol>` nằm bên trái topbar, trước các khung thời gian; trạng thái `LIVE`, tải dữ liệu, lỗi hoặc replay nằm sát phía phải topbar.
