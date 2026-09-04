@@ -7,6 +7,11 @@
 - Preserve the public `key` in `manifest.json`. It keeps the Extension ID stable across updates and machines.
 - The extension reads public Binance market data only. Do not add account, order, or API-key access unless explicitly requested.
 
+## Agent delegation
+
+- The primary/root agent acts only as the coordinator and delegates all execution work to sub-agents.
+- Every delegated sub-agent must use the `gpt-5.6-sol` model with `medium` reasoning effort.
+
 ## Product direction
 
 - Match TradingView interaction patterns closely when screenshots or videos are supplied.
@@ -51,6 +56,7 @@
 - Fibonacci Retracement
 - Long Position
 - Price Range
+- Date Range
 - Trend Line, including Shift-lock to horizontal or vertical
 - Text
 
@@ -84,4 +90,3 @@ When creating a release ZIP:
 ## Starting a task
 
 Before editing, read `AGENTS.md`, `CODEX_HANDOFF.md`, `README.md`, `manifest.json`, and the relevant functions in `content.js`. Inspect every supplied screenshot or video that affects interaction or appearance.
-
