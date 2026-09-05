@@ -4,13 +4,15 @@ import { readFile } from "node:fs/promises";
 
 const INIT_CALL = "  ignoreFailure(init());";
 const TEST_HOOK = `  globalThis.__CFRSI_TEST__ = {
-    DEFAULTS, ICONS, state, rebuild, renderPrice, render,
+    DEFAULTS, ICONS, state, rebuild, renderPrice, render, timeTicks, timeAt,
+    canvasPixelGrid, alignedStroke, alignedFillRange, candlePixelGeometry,
+    timeScaleDragZoom,
     setShadow(value) { shadow = value; }
   };`;
 
-export async function loadCanonicalRuntime(url = new URL("../../web/js/canonical-content.js", import.meta.url)) {
+export async function loadCanonicalRuntime(url = new URL("../../web/js/chart-engine.js", import.meta.url), { devicePixelRatio = 1 } = {}) {
   const source = await readFile(url, "utf8");
-  assert.ok(source.includes(INIT_CALL), "canonical source must retain the extension init call");
+  assert.ok(source.includes(INIT_CALL), "chart engine must retain its init call");
   const instrumented = source.replace(INIT_CALL, TEST_HOOK);
   const sandbox = {
     addEventListener() {},
@@ -19,7 +21,7 @@ export async function loadCanonicalRuntime(url = new URL("../../web/js/canonical
     clearTimeout,
     console,
     Date,
-    devicePixelRatio: 1,
+    devicePixelRatio,
     document: { addEventListener() {} },
     Event: class Event {},
     innerHeight: 900,

@@ -1,4 +1,5 @@
-import { APP_VERSION, ENABLED_SYMBOLS, resolveSymbol } from "./config.js";
+﻿import { APP_VERSION, ENABLED_SYMBOLS, resolveSymbol } from "./config.js";
+import { bindVisibleViewport } from "./viewport.js";
 import {
   bootstrapCanonicalStorage,
   exportLocalData,
@@ -8,7 +9,7 @@ import {
   setMarketCache,
   setSetting
 } from "./storage.js";
-import { createCanonicalChromeFacade } from "./storage-adapter.js";
+import { createChartStorageFacade } from "./storage-adapter.js";
 import { createCloudSync } from "./firebase-sync.js";
 import { createLiveTitleController } from "./title-price.js";
 
@@ -18,11 +19,9 @@ const importInput = document.querySelector("#pwa-import-file");
 const storageAdapter = bootstrapCanonicalStorage();
 await storageAdapter.loadState();
 
-const chromeFacade = createCanonicalChromeFacade(storageAdapter, { baseUrl: rootUrl.href });
-chromeFacade.runtime.getURL = path => path === "icons/icon32.png"
-  ? new URL("assets/icon.svg", rootUrl).href
-  : new URL(path, rootUrl).href;
-globalThis.chrome = chromeFacade;
+const platformFacade = createChartStorageFacade(storageAdapter, { baseUrl: rootUrl.href });
+platformFacade.runtime.getURL = path => new URL(path, rootUrl).href;
+globalThis.chartForgePlatform = platformFacade;
 
 const remembered = await getSetting("lastSymbol");
 const symbol = resolveSymbol(location.search, remembered);
@@ -72,9 +71,9 @@ history.replaceState(null, "", initialUrl);
 
 await new Promise((resolve, reject) => {
   const script = document.createElement("script");
-  script.src = new URL("js/canonical-content.js", rootUrl).href;
+  script.src = new URL("js/chart-engine.js", rootUrl).href;
   script.onload = resolve;
-  script.onerror = () => reject(new Error("Không tải được canonical ChartForge engine"));
+  script.onerror = () => reject(new Error("Không tải được ChartForge engine"));
   document.head.append(script);
 });
 
@@ -83,7 +82,7 @@ const host = await new Promise((resolve, reject) => {
   const poll = () => {
     const value = document.querySelector("#binance-rsi-mtf-host");
     if (value?.shadowRoot) resolve(value);
-    else if (++attempts > 300) reject(new Error("Canonical ChartForge engine không khởi tạo"));
+    else if (++attempts > 300) reject(new Error("ChartForge engine không khởi tạo"));
     else requestAnimationFrame(poll);
   };
   poll();
@@ -95,10 +94,12 @@ const topbar = shadow.querySelector(".topbar");
 const identity = shadow.querySelector(".chart-identity");
 const status = shadow.querySelector(".status");
 panel.classList.add("fullscreen", "pwa-shell");
+const unbindVisibleViewport = bindVisibleViewport(panel);
+window.addEventListener("pagehide", unbindVisibleViewport, { once: true });
 
 const platformTheme = document.createElement("style");
 platformTheme.textContent = `
-  .panel.pwa-shell{min-width:0!important;min-height:0!important;border:0!important;box-shadow:none!important}
+  .panel.pwa-shell{left:var(--pwa-viewport-left,0px)!important;top:var(--pwa-viewport-top,0px)!important;width:var(--pwa-viewport-width,100dvw)!important;height:var(--pwa-viewport-height,100dvh)!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;border:0!important;box-shadow:none!important}
   .pwa-shell>.resize-handle,.pwa-shell .fullscreen-button,.pwa-shell .collapse,.pwa-shell .close{display:none!important}
   .pwa-symbol-select{position:absolute;inset:-9px -4px;opacity:0;cursor:pointer!important}
   .pwa-shell .chart-identity{position:relative}
@@ -106,10 +107,12 @@ platformTheme.textContent = `
   .pwa-auth:hover{background:#f3f4f6}.pwa-auth img{width:22px;height:22px;border-radius:50%}.pwa-auth-dot{width:7px;height:7px;border-radius:50%;background:#9ca3af;flex:none}.pwa-auth[data-sync=syncing] .pwa-auth-dot{background:#eab308}.pwa-auth[data-sync=synced] .pwa-auth-dot{background:#16a34a}.pwa-auth[data-sync=error] .pwa-auth-dot{background:#dc2626}
   .pwa-shell .topbar .status{margin-left:auto}.pwa-auth{margin-left:4px}
   .pwa-account-menu{position:absolute;z-index:30;display:none;right:8px;top:43px;width:205px;padding:7px;background:#fff;border:1px solid #d1d5db;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.20)}.pwa-account-menu.show{display:grid;gap:3px}.pwa-account-menu button{height:38px;padding:0 10px;text-align:left;border:0;border-radius:6px;background:#fff;color:#111;font:12px Arial}.pwa-account-menu button:hover{background:#f3f4f6}.pwa-account-menu .danger{color:#b42318}
-  .pwa-toast{position:absolute;z-index:40;left:50%;bottom:54px;max-width:min(420px,calc(100% - 24px));padding:9px 14px;border-radius:7px;background:#171b26;color:#fff;font:12px Arial;opacity:0;pointer-events:none;transform:translateX(-50%);transition:opacity .18s}.pwa-toast.show{opacity:1}
+  .pwa-shell .bottom-bar{position:relative;z-index:17;height:calc(42px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;flex:none}
+  .pwa-shell .drawing-tools,.pwa-shell.fullscreen .drawing-tools{bottom:calc(43px + env(safe-area-inset-bottom,0px))}.pwa-shell.replay-open .drawing-tools,.pwa-shell.fullscreen.replay-open .drawing-tools{bottom:calc(91px + env(safe-area-inset-bottom,0px))}
+  .pwa-toast{position:absolute;z-index:40;left:50%;bottom:calc(54px + env(safe-area-inset-bottom,0px));max-width:min(420px,calc(100% - 24px));padding:9px 14px;border-radius:7px;background:#171b26;color:#fff;font:12px Arial;opacity:0;pointer-events:none;transform:translateX(-50%);transition:opacity .18s}.pwa-toast.show{opacity:1}
   .pwa-shell .replay-date-dialog,.pwa-shell .replay-exit-dialog{width:min(330px,calc(100% - 24px))}
   @media(max-width:700px){
-    .pwa-shell .topbar{height:96px;position:relative;padding:0 8px 48px;overflow:visible}.pwa-shell .topbar .tabs{position:absolute;left:6px;right:6px;bottom:4px;height:38px;overflow-x:auto}.pwa-shell .topbar-separator{display:none}.pwa-auth{min-width:34px;max-width:40px;padding:0}.pwa-auth-label{display:none}.pwa-shell .topbar .status{min-width:7px;max-width:7px;padding:0;overflow:visible;flex:none;font-size:0}.pwa-shell .topbar .status::before{width:8px;height:8px}.pwa-shell .drawing-tools{top:96px}.pwa-shell .replay-bar{overflow-x:auto;justify-content:flex-start;padding-left:54px}.pwa-account-menu{top:43px}.pwa-shell .bottom-bar{overflow-x:auto}.pwa-shell .values{flex:none}
+    .pwa-shell .topbar{height:96px;position:relative;padding:0 8px 48px;overflow:visible}.pwa-shell .topbar .tabs{position:absolute;left:6px;right:6px;bottom:4px;height:38px;overflow-x:auto}.pwa-shell .topbar-separator{display:none}.pwa-auth{min-width:34px;max-width:40px;padding:0}.pwa-auth-label{display:none}.pwa-shell .topbar .status{min-width:7px;max-width:7px;padding:0;overflow:visible;flex:none;font-size:0}.pwa-shell .topbar .status::before{width:8px;height:8px}.pwa-shell .drawing-tools{top:96px;gap:2px}.pwa-shell .drawing-tool{height:30px}.pwa-shell .tool-separator{margin:2px 0}.pwa-shell .replay-bar{overflow-x:auto;justify-content:flex-start;padding-left:54px}.pwa-account-menu{top:43px}.pwa-shell .bottom-bar{overflow-x:auto}.pwa-shell .values{flex:none}
   }
 `;
 shadow.append(platformTheme);
@@ -312,4 +315,4 @@ createCloudSync({
 
 bootstrap.hidden = true;
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.warn);
-console.info(`ChartForge RSI PWA ${APP_VERSION}; canonical extension engine 3.10.15`);
+console.info(`ChartForge RSI PWA ${APP_VERSION}`);

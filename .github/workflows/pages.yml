@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["content.js", "web/**", "tests/**", "scripts/**", "package.json", ".github/workflows/pages.yml"]
+    paths: ["web/**", "tests/**", "scripts/**", "package.json", "package-lock.json", ".github/workflows/pages.yml"]
 permissions:
   contents: read
   pages: write
@@ -28,7 +28,6 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm test
-      - run: git diff --exit-code -- web/js/canonical-content.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true

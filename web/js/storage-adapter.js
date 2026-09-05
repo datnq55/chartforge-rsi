@@ -90,7 +90,7 @@ export function createCanonicalStorageAdapter(repository,{makeId=()=>crypto.rand
   return{get,set,remove,reload,loadState:()=>get(null),saveState:set,canonicalizeRemote,refreshFromRemote:()=>reload("sync"),subscribe:listener=>(listeners.add(listener),()=>listeners.delete(listener)),area};
 }
 
-export function createCanonicalChromeFacade(adapter,{baseUrl=globalThis.location?.href||"http://localhost/"}={}){
+export function createChartStorageFacade(adapter,{baseUrl=globalThis.location?.href||"http://localhost/"}={}){
   const listeners=new Set(),stop=adapter.subscribe((changes,area)=>{for(const listener of listeners)listener(changes,area)}),emptyArea={get(keys,callback){const result={};callback?.(result);return Promise.resolve(result)},set(data,callback){callback?.();return Promise.resolve()},remove(keys,callback){callback?.();return Promise.resolve()}};
   return{storage:{local:adapter.area,sync:emptyArea,onChanged:{addListener:listener=>listeners.add(listener),removeListener:listener=>listeners.delete(listener)}},runtime:{getURL:path=>new URL(path,baseUrl).href,onMessage:{addListener(){},removeListener(){}}},destroy:stop};
 }

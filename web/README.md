@@ -1,51 +1,23 @@
-# ChartForge RSI PWA 0.4.2
+# ChartForge RSI PWA 0.4.15
 
-This directory is a dependency-free static PWA. Its chart UI and behavior are not an independent rewrite: `js/canonical-content.js` is generated directly from the unchanged extension `content.js`. The PWA adapter changes only the platform boundary: fixed symbol selection, IndexedDB/Firebase, full-page/mobile layout, asset URLs, Binance's browser-safe public endpoint and touch controls.
+Đây là static app được GitHub Pages phục vụ trực tiếp. `js/chart-engine.js` là nguồn duy nhất cho chart UI, Canvas renderer, SVG, drawings và Bar Replay. `js/app.js` bổ sung symbol selector, IndexedDB/Firestore, mobile viewport, Binance endpoint và touch controls.
 
-## Local preview
-
-Serve this directory over HTTP; do not open `index.html` using `file://`:
+Chạy local:
 
 ```bash
 npx --yes http-server web -p 4173 -c-1
 ```
 
-Open `http://localhost:4173/?symbol=BTCUSDT`. Available symbols are defined once in `js/config.js`.
+Mở `http://localhost:4173/?symbol=BTCUSDT`.
 
-## GitHub Pages
+Topbar, replay bar và bottom toolbar nằm ngoài `chart-workspace`. Price/RSI canvases chỉ nhận kích thước còn lại. Bottom toolbar có separator mỏng toàn chiều ngang; cụm OHLC tự wrap trong plot trên màn hình hẹp và không che price gutter. Mobile theo `visualViewport` và safe-area inset để browser chrome không che toolbar.
 
-`.github/workflows/pages.yml` validates and uploads this directory as the Pages artifact. Relative manifest, module and service-worker paths make the deployed app available at `https://datnq55.github.io/chartforge-rsi/`.
+Drawing rail hiển thị liền mạch tools, separator, Undo/Redo/Trash, separator và countdown đóng nến dạng thời lượng; countdown ẩn trong Replay. RSI/EMA/WMA nằm bên trái bottom toolbar.
 
-## Firebase sync
+Biểu tượng datum hình học dùng chung cho topbar, favicon, Apple touch icon và icon cài PWA. `assets/icon.svg` là nguồn vector; chạy `npm run icons:pwa` để tái tạo các bản PNG 180/192/512 bằng Chrome cục bộ.
 
-The real public Web config for Firebase project `chartforge-rsi` lives in `firebase-config.js`. This metadata is intentionally trackable; it is not a private key. Never add a service-account JSON or Admin SDK secret to this static app.
+Trash mở confirm dialog dùng chung với thao tác thoát Replay. Hủy không tạo mutation; xác nhận xóa đúng một lần và vẫn khôi phục được bằng Undo.
 
-The app works without signing in and always commits mutations to IndexedDB first. Google sign-in enables per-UID Firestore sync. Popup auth is preferred because it works from a direct tap in mobile Safari/installed PWAs; blocked/unsupported popups fall back to redirect handling.
+Time scale dùng lịch UTC phân cấp cho mọi timeframe. Mốc năm/tháng được ưu tiên; nhãn ngày, giờ và phút tự xuất hiện dày dần theo số pixel trên bar và chỉ được vẽ khi không va chạm. Kéo trực tiếp trên time scale thay đổi bar spacing theo tỷ lệ khoảng cách từ con trỏ đến mép phải, giữ nguyên right offset và không trộn thêm thao tác pan; hành vi này dùng chung cho chuột và touch.
 
-Synced data:
-
-- settings: last symbol, timeframe, visible bars, price/RSI pane ratio, price shift/scale, crosshair mode and Trend/Text drawing defaults;
-- drawings: complete symbol-level objects and deletion tombstones.
-
-Never synced: Binance market cache, Replay state/timers, Undo/Redo history. Offline mutations stay queued and flush on reconnect. Conflict order is `revision`, then client `updatedAt`, then stable `deviceId`; Firestore server timestamps are retained for audit.
-
-The first Google account claims the existing anonymous local data. If a different Google account is later selected on the same browser profile, synchronized local settings/drawings and its pending queue are cleared before the new UID subscribes; the previous account's cloud copy is not exposed or uploaded across UIDs.
-
-Before sign-in can work in production, verify these items in Firebase Console:
-
-1. Authentication → Sign-in method → enable **Google**.
-2. Firestore Database → create a database (production mode is fine because this repository supplies rules).
-3. Authentication → Settings → Authorized domains → add `datnq55.github.io`, `localhost`, and `127.0.0.1` if absent. New Firebase projects may not add localhost automatically.
-4. The PWA 0.4.2 `firestore.rules` is covered by authenticated Firestore Emulator CREATE/UPDATE/tombstone tests; ruleset `2ddf9680-e7da-4114-bae6-63aa07af27fb` was deployed to project `chartforge-rsi` on 2026-09-05. After a future rules change, deploy it with `npx firebase-tools deploy --only firestore:rules --project chartforge-rsi` from the repository root. Deployment is intentionally not automated by the Pages workflow.
-
-Stay on Spark; do not enable billing, Cloud Functions, account/order APIs or Firebase Hosting.
-
-## Canonical engine boundary
-
-The extension renderer, complete Shadow DOM regions, CSS, SVG registry, chart scales/ticks/labels, RSI bands, all six drawings and Bar Replay are copied into the generated PWA engine without simplification. `npm test` regenerates that file and fails if it differs from `content.js` after the one generated-file banner. The old independent `js/chart.js` renderer has been removed.
-
-`js/storage-adapter.js` translates the canonical symbol-keyed drawing maps to the existing per-ID IndexedDB/Firestore model. It preserves stable IDs, revisions, array order and tombstones, migrates the old `priceRange` name to canonical `range`, and rejects Replay, Undo/Redo, market rows, drafts and other session-only state. A real Google account sign-in and cross-device cloud-sync acceptance check still requires an interactive user session.
-
-Mobile uses direct touch gestures without a synthetic Shift/Snap control. Pinch cancels any pending one-finger chart pan before zooming and keeps its initial midpoint as the zoom anchor. Desktop physical-Shift behavior remains entirely canonical.
-
-PWA 0.4.2 strips legacy/local-only keys such as `panBars`, Replay and Undo/Redo from an existing Firestore settings document whenever a queued mutation retries. The right side of the topbar is ordered as market status followed by account control. The browser tab title is reset immediately on symbol selection, then updated from the latest REST close and every WebSocket kline tick, for example `79,757.70 | BTCUSDT | ChartForge RSI`; the ChartForge favicon is unchanged.
+Google sign-in là tùy chọn. IndexedDB luôn là nguồn local trước; settings/drawings hợp lệ mới vào Firestore queue. Market cache, Replay và Undo/Redo không đồng bộ. Không thêm service-account hoặc Admin SDK secret.

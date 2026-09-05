@@ -1,15 +1,15 @@
 {
   "name": "chartforge-rsi",
   "private": true,
-  "version": "0.4.2",
+  "version": "0.4.15",
   "type": "module",
   "scripts": {
-    "build:pwa": "node scripts/build-pwa-canonical.mjs",
     "test:pwa": "node --test tests/pwa*.test.mjs",
     "test:rules": "npx --yes firebase-tools@15.29.0 emulators:exec --only firestore --project demo-chartforge-rsi \"node --test tests/firestore-rules.test.mjs\"",
     "smoke:pwa": "node scripts/smoke-pwa.mjs",
+    "icons:pwa": "node scripts/render-pwa-icons.mjs",
     "validate:pwa": "node scripts/validate-pwa.mjs",
-    "test": "npm run build:pwa && npm run validate:pwa && npm run test:pwa && npm run test:rules"
+    "test": "npm run validate:pwa && npm run test:pwa && npm run test:rules"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

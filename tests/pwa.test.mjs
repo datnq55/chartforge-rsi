@@ -1,6 +1,6 @@
 import test from"node:test";import assert from"node:assert/strict";
 import{ENABLED_SYMBOLS,resolveSymbol,timeframe}from"../web/js/config.js";
-import{rsi,ema,wma,aggregateBiweekly,mergeRows,formatDuration,pointerAnchoredBounds,replayCutIndex,anchoredTimeScale}from"../web/js/math.js";
+import{rsi,ema,wma,aggregateBiweekly,mergeRows,formatDuration,pointerAnchoredBounds,replayCutIndex,rightAnchoredTimeScale}from"../web/js/math.js";
 import{mapKlines}from"../web/js/binance.js";
 import{SCHEMA,importLocalData}from"../web/js/storage.js";
 import{createSyncEngine,newestByEntity}from"../web/js/sync-core.js";
@@ -14,7 +14,7 @@ test("IndexedDB schema is versioned and contains local-first stores",()=>{assert
 test("Import rejects malformed data before opening IndexedDB",async()=>{await assert.rejects(importLocalData({format:"chartforge-rsi",version:1,settings:[],drawings:[{id:"x",symbol:"BAD",type:"trend",a:{time:1,price:2}}]}),/drawing không hợp lệ/)});
 test("Replay hides the selected candle and first step reveals it",()=>{const rows=[1,2,3,4].map(time=>({time})),cut=replayCutIndex(rows,3);assert.equal(cut,2);assert.deepEqual(rows.slice(0,cut).map(x=>x.time),[1,2]);assert.equal(rows.slice(0,cut+1).at(-1).time,3)});
 test("Price scale keeps the pointer-down price fixed",()=>{const bounds={lo:80,hi:120},pivot=90,ratio=.75,next=pointerAnchoredBounds(bounds,pivot,ratio,-60),project=b=>b.hi-ratio*(b.hi-b.lo);assert.ok(Math.abs(project(next)-pivot)<1e-9);assert.ok(next.hi-next.lo<40)});
-test("Time scale changes bars without moving its pointer-down anchor",()=>{const before=anchoredTimeScale(1000,240,0,0,.4),after=anchoredTimeScale(1000,240,0,100,.4);assert.equal(after.bars,260);const projected=1000-after.offset-after.bars+.4*(after.bars-1);assert.ok(Math.abs(projected-after.anchor)<1e-9);assert.equal(before.bars,240)});
+test("Time scale pivots at the right edge without changing its future offset",()=>{const before=rightAnchoredTimeScale(240,-30,1000,1000,1900),after=rightAnchoredTimeScale(240,-30,1000,1200,1900);assert.equal(before.bars,240);assert.equal(after.bars,308);assert.equal(after.offset,-30);const initialSpacing=1900/(before.bars-1),anchorDistance=(1900-1000)/initialSpacing,nextX=1900-anchorDistance*(1900/(after.bars-1));assert.ok(Math.abs(nextX-1200)<2)});
 test("Sync coalesces queue and two devices converge through offline edits and tombstones",async()=>{
   const compare=(a,b)=>a.revision-b.revision||a.updatedAt-b.updatedAt||a.deviceId.localeCompare(b.deviceId),hub={docs:new Map(),listeners:new Set()};
   const remote=online=>({online:()=>online.value,write:async(uid,kind,row)=>{const key=`${uid}:${kind}:${row.id}`,current=hub.docs.get(key),winner=!current||compare(current,row)<=0?structuredClone(row):current;hub.docs.set(key,winner);for(const listener of hub.listeners)listener(kind,structuredClone(winner));return{winner}},subscribe:(uid,h)=>{const listener=(kind,row)=>h[kind](row);hub.listeners.add(listener);for(const[key,row]of hub.docs)if(key.startsWith(`${uid}:`))listener(key.split(":")[1],structuredClone(row));return[()=>hub.listeners.delete(listener)]}});

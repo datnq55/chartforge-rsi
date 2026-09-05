@@ -5,26 +5,12 @@ import { functionBody, loadCanonicalRuntime, recordingCanvas } from "./fixtures/
 import { createCanonicalStorageAdapter } from "../web/js/storage-adapter.js";
 
 const root = new URL("../", import.meta.url);
-const extensionUrl = new URL("content.js", root);
-const canonicalUrl = new URL("web/js/canonical-content.js", root);
-const banner = "// GENERATED from ../../content.js by scripts/build-pwa-canonical.mjs. Do not edit.\n";
+const engineUrl = new URL("web/js/chart-engine.js", root);
 
 const compact = value => value.replace(/\s+/g, "");
 
-test("generated PWA implementation is the exact extension source after one banner", async () => {
-  const [extension, generated] = await Promise.all([
-    readFile(extensionUrl, "utf8"),
-    readFile(canonicalUrl, "utf8")
-  ]);
-  assert.ok(generated.startsWith(banner), "generated source must have the canonical banner exactly once");
-  assert.equal(generated.slice(banner.length), extension);
-});
-
-test("canonical PWA exposes the exact extension SVG icon registry", async () => {
-  const [extension, canonical] = await Promise.all([
-    loadCanonicalRuntime(extensionUrl),
-    loadCanonicalRuntime(canonicalUrl)
-  ]);
+test("PWA engine exposes the complete SVG icon registry", async () => {
+  const canonical = await loadCanonicalRuntime(engineUrl);
   const expected = [
     "fib", "long", "range", "dateRange", "trend", "text", "reset", "cross", "refresh",
     "fullscreen", "collapse", "expand", "close", "trash", "undo", "redo", "grip",
@@ -32,7 +18,6 @@ test("canonical PWA exposes the exact extension SVG icon registry", async () => 
   ];
   assert.deepEqual(Object.keys(canonical.ICONS), expected);
   for (const name of expected) {
-    assert.equal(canonical.ICONS[name], extension.ICONS[name], `${name} SVG differs from extension`);
     assert.match(canonical.ICONS[name], /^<svg\b[^>]*aria-hidden="true"[^>]*focusable="false"[^>]*>[\s\S]*<\/svg>$/);
   }
 });
@@ -56,11 +41,11 @@ test("mobile adapter does not emulate a keyboard Shift/Snap control",async()=>{
   assert.match(source,/activeDrawingTouches\.size/);
 });
 
-test("Pages rebuilds canonical source and runtime cache excludes retired modules",async()=>{
+test("Pages validates the PWA source and runtime cache excludes retired modules",async()=>{
   const [workflow,sw]=await Promise.all([readFile(new URL(".github/workflows/pages.yml",root),"utf8"),readFile(new URL("web/sw.js",root),"utf8")]);
-  assert.match(workflow,/"content\.js"/);
+  assert.match(workflow,/"web\/\*\*"/);
   assert.match(workflow,/"scripts\/\*\*"/);
-  assert.match(workflow,/git diff --exit-code -- web\/js\/canonical-content\.js/);
+  assert.doesNotMatch(workflow,/git diff --exit-code/);
   assert.doesNotMatch(sw,/"\.\/js\/(?:math|binance)\.js"/);
 });
 
@@ -79,8 +64,8 @@ test("Firestore rules accept the canonical settings and drawing style ranges",as
   assert.doesNotMatch(rules,/data\.text\.size\(\) <= 2000/);
 });
 
-test("canonical Shadow DOM keeps extension structure, dimensions, and palette", async () => {
-  const source = await readFile(canonicalUrl, "utf8");
+test("chart engine keeps the established Shadow DOM structure, dimensions, and palette", async () => {
+  const source = await readFile(engineUrl, "utf8");
   for (const token of [
     'class="panel"', 'topbar.className = "topbar"', 'topbarLogo.className = "topbar-logo"', 'class="chart-identity"',
     'class="tabs"', 'replayButton.className = "replay-button"', 'pricePane.className = "price-chart"', 'priceScaleHitbox.className = "price-scale-hitbox"',
@@ -96,6 +81,68 @@ test("canonical Shadow DOM keeps extension structure, dimensions, and palette", 
     ".drawing-tools.drawing-toolsvg{stroke-width:1}", ".replay-bar{height:48px", ".panel,.price-chart,.chart{background:#fff}",
     ".topbar.tab.active{background:#e8f0ff;color:#2962ff;border-color:#b7c8ff}", ".replay-button.active,.replay-button.active:hover{background:#171b26;color:#fff;border-color:#171b26}"
   ]) assert.ok(css.includes(compact(rule)), `canonical CSS contract changed: ${rule}`);
+});
+
+test("canonical chart panes are isolated from fixed bars", async () => {
+  const source = await readFile(engineUrl, "utf8");
+  for (const token of [
+    'chartWorkspace.className = "chart-workspace"',
+    "chartWorkspace.append(pricePane, splitter, rsiPane)",
+    ".chart-workspace{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}",
+    "applyPaneSplit(pricePane, rsiPane)"
+  ]) assert.ok(source.includes(token), `fixed-bar layout contract misses ${token}`);
+  assert.doesNotMatch(source, /\.price-chart\{flex:none;min-height:90px/);
+  assert.doesNotMatch(source, /\.chart\{flex:1;min-height:90px/);
+});
+
+test("drawing rail owns history, trash, and the compact candle countdown in visual order",async()=>{
+  const source=await readFile(engineUrl,"utf8"),compactSource=compact(source);
+  const ordered=["text-tool","history-separator","undo-drawing","redo-drawing","clear-drawings","countdown-separator"];
+  const toolbarStart=source.indexOf('drawingToolbar.innerHTML = `');let previous=toolbarStart;
+  assert.ok(toolbarStart>=0,"drawing toolbar template missing");
+  for(const token of ordered){const index=source.indexOf(token,previous+1);assert.ok(index>previous,`${token} is out of drawing-rail order`);previous=index}
+  assert.match(source,/drawingToolbar\.appendChild\(candleCountdown\)/);
+  assert.doesNotMatch(source,/Đóng nến sau/);
+  assert.match(source,/countdown\.classList\.toggle\("hidden", hidden\)/);
+  assert.match(source,/\.countdown-separator"\)\?\.classList\.toggle\("hidden", hidden\)/);
+  assert.ok(compactSource.includes(compact(".tool-separator{width:34px;height:1px;flex:none;margin:3px 0")));
+});
+
+test("Trash reuses the accessible Replay confirmation instead of window.confirm",async()=>{
+  const source=await readFile(engineUrl,"utf8");
+  assert.doesNotMatch(source,/\bconfirm\s*\(/,"chart engine must not invoke the browser confirmation UI");
+  assert.equal((source.match(/const confirmDialog = document\.createElement\("div"\)/g)||[]).length,1,"confirmation UI must be a single shared component");
+  assert.match(source,/confirmationController\?\.open\(\{ title: "Thoát Bar Replay\?"/);
+  assert.match(source,/openConfirmation\(\{ title: "Xóa tất cả drawing\?"/);
+  assert.match(source,/cancelLabel: "Hủy", confirmLabel: "Xóa tất cả", onConfirm: clearAllDrawings/);
+  assert.match(source,/confirmDialog\.setAttribute\("aria-modal", "true"\)/);
+  assert.match(source,/e\.key === "Escape"[\s\S]*closeConfirmation\(\)/);
+  assert.match(source,/e\.key !== "Tab"[\s\S]*shadow\.activeElement/);
+  const clearBody=functionBody(source,"clearAllDrawings");
+  assert.match(clearBody,/pushDrawingHistory\(\)/,"confirmed bulk delete must remain undoable");
+  assert.match(clearBody,/storeSet\(\{ fibDrawings: state\.fibDrawings, toolDrawings: state\.toolDrawings \}\)/);
+  assert.doesNotMatch(clearBody,/confirm|openConfirmation/);
+  assert.match(source,/drawingMenu\.querySelector\("\.drawing-delete"\)\.onclick = \(\) =>/,"single-drawing delete remains direct");
+});
+
+test("RSI EMA and WMA values stay at the left edge of the bottom bar",async()=>{
+  const source=await readFile(engineUrl,"utf8"),css=compact(source);
+  assert.match(source,/shadow\.querySelector\("\.values"\)\.innerHTML = `<b class="rsi">RSI /);
+  assert.match(source,/<b class="fast">EMA /);
+  assert.match(source,/<b class="slow">WMA /);
+  assert.ok(css.includes(compact(".bottom-bar .values{margin-left:0;margin-right:auto;padding-left:8px}")));
+  assert.doesNotMatch(source,/bottomBar\.prepend\(candleCountdown\)/);
+});
+
+test("bottom bar separator spans the shell and the price legend wraps inside the plot",async()=>{
+  const source=await readFile(engineUrl,"utf8"),css=compact(source);
+  assert.match(source,/class="price-legend" role="group" aria-label="Giá nến hiện tại" hidden/);
+  assert.match(source,/function updatePriceLegend\(\)/);
+  assert.match(source,/element\.replaceChildren\(\)/);
+  assert.ok(css.includes(compact(".bottom-bar{border-top:1px solid #e5e7eb;box-sizing:border-box}")));
+  assert.ok(css.includes(compact(".price-legend{position:absolute;z-index:14;top:12px;left:69px;right:79px;display:flex;flex-wrap:wrap")));
+  assert.ok(css.includes(compact("pointer-events:none;user-select:none")));
+  assert.doesNotMatch(source,/ctx\.fillText\(legend\.delta/);
 });
 
 test("canonical price renderer is deterministic for a fixed OHLC fixture", async () => {
@@ -137,7 +184,7 @@ test("replay cutoff hides the selected candle and Forward reveals exactly it", a
 });
 
 test("Replay remains RAM-only and is absent from persistence writes", async () => {
-  const source = await readFile(canonicalUrl, "utf8");
+  const source = await readFile(engineUrl, "utf8");
   const runtime = await loadCanonicalRuntime();
   assert.equal(Object.hasOwn(runtime.DEFAULTS, "replay"), false, "replay must not enter Object.keys(DEFAULTS) storage restore");
   assert.match(source, /storeGet\(\[\.\.\.Object\.keys\(DEFAULTS\),\s*"uiDefaultsVersion"\]\)/);

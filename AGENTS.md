@@ -2,91 +2,63 @@
 
 ## Project identity
 
-- This repository contains ChartForge RSI, a Chrome Extension Manifest V3 overlay for Binance Spot.
-- The current product name is `ChartForge RSI`; do not call it a draft.
-- Preserve the public `key` in `manifest.json`. It keeps the Extension ID stable across updates and machines.
-- The extension reads public Binance market data only. Do not add account, order, or API-key access unless explicitly requested.
+- This repository contains the ChartForge RSI Progressive Web App for Binance Spot market analysis.
+- The product is `ChartForge RSI`; do not call it a draft.
+- It reads public Binance market data only. Do not add account, order, or API-key access unless explicitly requested.
+- The app is hosted as a static site on GitHub Pages. Firebase supplies optional Google sign-in and per-user Firestore sync.
 
 ## Agent delegation
 
-- The primary/root agent acts only as the coordinator and delegates all execution work to sub-agents.
-- Every delegated sub-agent must use the `gpt-5.6-sol` model with `medium` reasoning effort.
+- The primary/root agent acts only as coordinator and delegates all execution work to sub-agents.
+- Every delegated sub-agent must use `gpt-5.6-sol` with `medium` reasoning effort.
 
 ## Product direction
 
-- Match TradingView interaction patterns closely when screenshots or videos are supplied.
+- Match supplied TradingView interactions closely.
 - Keep the interface clean, compact, white, and based on thin monochrome SVG icons.
-- Treat the topbar, left drawing rail, floating drawing menu, chart panes, price scale, time scale, and bottom toolbar as reusable UI regions.
-- New drawing tools should reuse the existing selection, anchor editing, dragging, floating toolbar, deletion, persistence, and Undo/Redo infrastructure.
+- Treat the topbar, drawing rail, floating drawing menu, chart panes, price scale, time scale, replay bar, and bottom toolbar as reusable regions.
+- Prefer small changes to the existing architecture and preserve unrelated user work.
 
-## Chart behavior
+## Chart and data invariants
 
-- The price pane and RSI pane share one time scale.
-- All timeframes of the same symbol share the same drawings.
-- Drawing anchors are stored by time and price, not by screen coordinates.
-- Trend Lines may belong to either the price pane or the RSI pane.
-- Price-scale pointer events must be intercepted above the canvas and must never select, move, or edit drawings underneath.
-- Time zoom must preserve the bar under the pointer as the anchor.
-- Horizontal pan at the oldest loaded candle should load older Binance candles without moving the visible candle group.
-- Vertical pan should move the chart proportionally to pointer movement at every price zoom level.
-- Keep maximum time zoom at 1,000 visible bars unless the user requests another value.
+- The price and RSI panes share one time scale. Their canvases render only inside the flexible chart workspace; fixed top, replay, and bottom bars must never be covered.
+- Drawing anchors use time and price coordinates. All timeframes of one symbol share the same drawings.
+- Price-scale input must not select drawings underneath. Time zoom preserves the bar under the pointer.
+- Loading older candles must preserve the visible group and accumulated history. Maximum time zoom is 1,000 bars.
+- Supported timeframes are `30m`, `H1`, `H2`, `H4`, `H8`, `H12`, `D`, `3D`, `1W`, `2W`, and `M`; `2W` aggregates Binance `1w` candles.
+- Initial and paged loads request up to 1,000 candles. WebSocket updates are deduplicated by `openTime`.
 
-## Timeframes and data
+## Persistence invariants
 
-- Supported UI timeframes: `30m`, `H1`, `H2`, `H4`, `H8`, `H12`, `D`, `3D`, `1W`, `2W`, and `M`.
-- Binance intervals map directly except `2W`, which is aggregated from `1w` candles.
-- Initial loads request up to 1,000 candles.
-- Older history is fetched in additional batches using the oldest raw candle's open time as `endTime`.
-- Keep websocket updates deduplicated by candle `openTime`.
-- Never truncate the accumulated raw history back to the newest 1,000 candles after loading older batches.
+- IndexedDB is the local source of truth. Signed-in users may sync portable settings and symbol-keyed drawings through Firestore.
+- Do not change the IndexedDB or Firestore schema without a migration. Preserve revisions, stable IDs, tombstones, queue retry, and per-UID isolation.
+- Replay and Undo/Redo remain session-only RAM state. Market cache remains device-local.
+- Text remembers color/font size; Trend Line remembers color/width/style.
+- Preserve history behavior for create, delete, drag, anchor edit, text edit, and style changes.
 
-## Drawings and persistence
-
-- Drawing collections are keyed by symbol only, not symbol plus timeframe.
-- Settings and drawings use `chrome.storage.sync`, with local storage available for offline operation.
-- Sync drawing shards use keys shaped like `cfrsi:d:<f|t>:<encoded-symbol>:<index>`.
-- Preserve and migrate existing drawing data if the storage schema changes.
-- Text should remember its latest color and font size.
-- Trend Line should remember its latest color, width, and solid/dash/dot style.
-- Undo/Redo history is session-only RAM state. Do not save it to local storage or Chrome Sync.
-- Before create, delete, drag, anchor edit, text edit, or style changes, keep the existing history behavior intact.
-
-## Existing drawing tools
+## Drawing tools
 
 - Fibonacci Retracement
 - Long Position
 - Price Range
 - Date Range
-- Trend Line, including Shift-lock to horizontal or vertical
+- Trend Line, including desktop Shift-lock; mobile has no Snap control
 - Text
 
-## Editing rules
+## Editing and validation
 
-- Preserve unrelated user changes.
-- Prefer small changes to the existing architecture over replacing the chart implementation.
-- Use reusable functions and shared actions when behavior applies to multiple drawing tools.
-- Avoid external production dependencies unless they are clearly necessary.
-- Keep drawing hit-testing and coordinate conversion consistent with the plot width and the right price gutter.
-- When changing pane padding, price-scale width, or canvas layout, update rendering, hit-testing, crosshair, pan, zoom, and drawing coordinate calculations together.
-- Bump the extension version for every delivered update and update `README.md` with user-visible behavior.
-
-## Required validation
-
-Run these checks after modifying the extension:
+- Main chart source: `web/js/chart-engine.js`.
+- Browser/platform adapter: `web/js/app.js`.
+- Bump the PWA version for each delivered update and document user-visible behavior.
+- Before editing, read `AGENTS.md`, `CODEX_HANDOFF.md`, `README.md`, and relevant files under `web/js/`. Inspect all supplied media that affects behavior or appearance.
+- Run:
 
 ```bash
-node --check content.js
-node --check background.js
-node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))"
+node --check web/js/chart-engine.js
+node --check web/js/app.js
+npm run validate:pwa
+npm run test:pwa
 ```
 
-When creating a release ZIP:
-
-- Put the extension inside a root folder named `chartforge-rsi`.
-- Include `content.js`, `background.js`, `manifest.json`, `README.md`, and `icons/`.
-- Run `unzip -t` against the final archive.
-- Confirm the packaged manifest still contains the fixed public key and expected version.
-
-## Starting a task
-
-Before editing, read `AGENTS.md`, `CODEX_HANDOFF.md`, `README.md`, `manifest.json`, and the relevant functions in `content.js`. Inspect every supplied screenshot or video that affects interaction or appearance.
+- Run `npm test` when Java is available for the Firestore Emulator. Run `npm run smoke:pwa` with a local server for browser-level layout/data checks.
+- Never add service-account credentials or private Firebase secrets.

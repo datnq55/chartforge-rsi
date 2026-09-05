@@ -1,6 +1,6 @@
-import test from"node:test";
+﻿import test from"node:test";
 import assert from"node:assert/strict";
-import{STORAGE_ADAPTER_CONTRACT,canonicalStateFromRows,canonicalizeRemote,createCanonicalChromeFacade,createCanonicalStorageAdapter,isCloudSettingId,toCanonicalDrawing,toStoredDrawing}from"../web/js/storage-adapter.js";
+import{STORAGE_ADAPTER_CONTRACT,canonicalStateFromRows,canonicalizeRemote,createChartStorageFacade,createCanonicalStorageAdapter,isCloudSettingId,toCanonicalDrawing,toStoredDrawing}from"../web/js/storage-adapter.js";
 
 test("only portable preferences are eligible for Firebase sync",()=>{
   for(const id of ["lastSymbol","timeframe","visibleBars","pricePercent","priceShift","priceScale","crossMode","drawingDefaults"])assert.equal(isCloudSettingId(id),true,id);
@@ -106,12 +106,12 @@ test("canonical map writes skip unchanged symbols",async()=>{
   assert.equal(replaced.some(item=>item.symbol==="ETHUSDT"),false);
 });
 
-test("chrome facade exposes callbacks, remote change events and inert sync shards",async()=>{
-  const rows=[],adapter=createCanonicalStorageAdapter({listSettingRows:async()=>rows,listDrawings:async()=>[],replaceDrawings:async()=>{},setSetting:async(id,value)=>{rows.push({id,value})},removeSetting:async()=>{}},{makeId:()=>"id"}),chrome=createCanonicalChromeFacade(adapter,{baseUrl:"https://example.test/app/"});
-  const changes=[];chrome.storage.onChanged.addListener((value,area)=>changes.push({value,area}));
-  await new Promise(resolve=>chrome.storage.local.set({selected:"D"},resolve));
-  assert.equal((await chrome.storage.local.get("selected")).selected,"D");
-  assert.deepEqual(await chrome.storage.sync.get(null),{});
-  assert.equal(chrome.runtime.getURL("icons/icon32.png"),"https://example.test/app/icons/icon32.png");
-  assert.equal(changes[0].area,"local");chrome.destroy();
+test("storage facade exposes callbacks, remote change events and inert sync shards",async()=>{
+  const rows=[],adapter=createCanonicalStorageAdapter({listSettingRows:async()=>rows,listDrawings:async()=>[],replaceDrawings:async()=>{},setSetting:async(id,value)=>{rows.push({id,value})},removeSetting:async()=>{}},{makeId:()=>"id"}),platform=createChartStorageFacade(adapter,{baseUrl:"https://example.test/app/"});
+  const changes=[];platform.storage.onChanged.addListener((value,area)=>changes.push({value,area}));
+  await new Promise(resolve=>platform.storage.local.set({selected:"D"},resolve));
+  assert.equal((await platform.storage.local.get("selected")).selected,"D");
+  assert.deepEqual(await platform.storage.sync.get(null),{});
+  assert.equal(platform.runtime.getURL("assets/icon.svg"),"https://example.test/app/assets/icon.svg");
+  assert.equal(changes[0].area,"local");platform.destroy();
 });
